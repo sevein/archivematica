@@ -55,14 +55,21 @@ class Command(object):
         # Add verification and event detail commands, if they exist
         self.verification_command = None
         if self.fpcommand.verification_command:
-            self.verification_command = Command(self.fpcommand.verification_command, self.replacement_dict)
+            self.verification_command = Command(
+                self.fpcommand.verification_command, self.replacement_dict)
 
         self.event_detail_command = None
         if self.fpcommand.event_detail_command:
-            self.event_detail_command = Command(self.fpcommand.event_detail_command, self.replacement_dict)
+            self.event_detail_command = Command(
+                self.fpcommand.event_detail_command, self.replacement_dict)
 
     def __str__(self):
-        return u"[COMMAND] {}\n\tExecuting: {}\n\tOutput location: {}\n".format(self.fpcommand, self.command, self.verification_command, self.output_location)
+        return (u"[COMMAND] {}"
+                u"\n\tExecuting: {}"
+                u"\n\tVerification command: {}"
+                u"\n\t\n\tOutput location: {}\n".format(
+                    self.fpcommand, self.command, self.verification_command,
+                    self.output_location))
 
     def execute(self, skip_on_success=False):
         """ Execute the the command, and associated verification and event detail commands.
@@ -74,6 +81,13 @@ class Command(object):
         args = []
         if self.type in ['command', 'bashScript']:
             self.command = self.replacement_dict.replace(self.command)[0]
+        # When the "Validate using MediaConch" validation command is being used
+        # as a verification command, we want the output location from the
+        # normalization process (i.e., the .mkv file) to be the sole argument
+        # to the MediaConch verifier. Warning: this is very ad hoc/brittle ---
+        # better solution?
+        elif self.fpcommand.description == 'Validate using MediaConch':
+            args = self.replacement_dict.replace('%outputLocation%')
         # For other command types, we translate the entries from
         # replacement_dict into GNU-style long options, e.g.
         # [%fileName%, foo] => --file-name=foo
@@ -82,7 +96,8 @@ class Command(object):
         print "Command to execute:", self.command
         print "-----"
         print "Command stdout:"
-        self.exit_code, self.std_out, std_err = executeOrRun(self.type, self.command, arguments=args, printing=True)
+        self.exit_code, self.std_out, std_err = executeOrRun(
+            self.type, self.command, arguments=args, printing=True)
         print "-----"
         print 'Command exit code:', self.exit_code
         if self.exit_code == 0 and self.verification_command:
