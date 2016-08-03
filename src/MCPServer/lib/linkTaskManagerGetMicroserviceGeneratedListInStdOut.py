@@ -69,7 +69,7 @@ class linkTaskManagerGetMicroserviceGeneratedListInStdOut(LinkTaskManager):
         # Apply unit (SIP/Transfer) replacement values
         commandReplacementDic = unit.getReplacementDic(directory)
         # Escape all values for shell
-        for key, value in commandReplacementDic.items():
+        for key, value in list(commandReplacementDic.items()):
                 commandReplacementDic[key] = archivematicaFunctions.escapeForCommand(value)
         arguments, standardOutputFile, standardErrorFile = commandReplacementDic.replace(arguments, standardOutputFile, standardErrorFile)
 
