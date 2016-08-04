@@ -14,6 +14,7 @@
         <th>File format</th>
         <th>Preservation normalization attempted</th>
         <th>Preservation normalization failed</th>
+        <th>Preservation conformance check</th>
         <th>Already in preservation format</th>
         <th>Access normalization attempted</th>
         <th>Access normalization failed</th>
@@ -40,6 +41,22 @@
           <!-- Red when yes -->
           <td class="{{ item.preservation_normalization_failed|yesno:"error,ok" }}">
             {{ item.preservation_normalization_failed|yesno:"Yes,No" }}
+          </td>
+
+          <!-- Preservation Conformance Check -->
+          <!-- Red when conformance check failed -->
+          <td>
+            {% if item.preservation_normalization_validation_attempted %}
+              {% if item.preservation_normalization_validation_task_uuid %}
+                <a href="{% url 'main.views.task' item.preservation_normalization_validation_task_uuid %}"
+                   target="_blank"
+                   >{{ item.preservation_normalization_validation_failed|yesno:"Failed,Passed" }}</a>
+              {% else %}
+                {{ item.preservation_normalization_validation_failed|yesno:"Failed,Passed" }}
+              {% endif %}
+            {% else %}
+              N/A
+            {% endif %}
           </td>
 
           <!-- Red if reservation_normalization_attempted is No and already_in_preservation_format is No -->

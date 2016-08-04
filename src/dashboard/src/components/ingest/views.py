@@ -339,13 +339,52 @@ def ingest_upload(request, uuid):
 
     return HttpResponseBadRequest()
 
+
+def process_normalization_validation(obj):
+    """``obj`` encodes information about a specific file and any normalization
+    and normalization validation events performed on it. This function returns
+    a 2-tuple of ints indicating whether normalization validation was attempted
+    and whether it failed.
+    """
+    stdOut = obj['preservation_validation_task_stdOut']
+    exitCode = obj['preservation_validation_task_exitCode']
+    preservation_normalization_validation_failed = 1
+    if (    obj['fileID'] and
+            exitCode == 0 and
+            stdOut and
+            '{"eventOutcomeInformation": "pass",' in stdOut):
+        preservation_normalization_validation_failed = 0
+    preservation_normalization_validation_attempted = 0
+    try:
+        skipped = 'was not derived from normalization;' in stdOut
+    except TypeError:
+        skipped = False
+    try:
+        has_stdout = stdOut.strip() != ''
+    except AttributeError:
+        has_stdout = False
+    if (    obj['fileID'] and
+            exitCode < 2 and
+            not skipped and
+            has_stdout):
+        preservation_normalization_validation_attempted = 1
+    return (preservation_normalization_validation_attempted,
+            preservation_normalization_validation_failed)
+
+
 def ingest_normalization_report(request, uuid, current_page=None):
     jobs = models.Job.objects.filter(sipuuid=uuid, subjobof='')
     sipname = utils.get_directory_name_from_job(jobs)
 
     objects = getNormalizationReportQuery(sipUUID=uuid)
     for o in objects:
+        (preservation_normalization_validation_attempted,
+         preservation_normalization_validation_failed) = process_normalization_validation(o)
         o['location'] = archivematicaFunctions.escape(o['location'])
+        o['preservation_normalization_validation_attempted'] = \
+            preservation_normalization_validation_attempted
+        o['preservation_normalization_validation_failed'] = \
+            preservation_normalization_validation_failed
 
     results_per_page = 10
 

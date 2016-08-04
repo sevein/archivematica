@@ -25,15 +25,15 @@
 
 from components import helpers
 from django.db import connection
-    
+
 def getNormalizationReportQuery(sipUUID, idsRestriction=""):
     if idsRestriction:
         idsRestriction = 'AND (%s)' % idsRestriction  
-    
+
     cursor = connection.cursor()
-        
+
     # not fetching name of ID Tool, don't think we need it.
-    
+
     sql = """
     select
         CONCAT(a.currentLocation, ' ', a.fileUUID,' ', IFNULL(a.fileID, "")) AS 'pagingIndex', 
@@ -51,7 +51,10 @@ def getNormalizationReportQuery(sipUUID, idsRestriction=""):
         c.taskUUID as access_normalization_task_uuid,
         b.taskUUID as preservation_normalization_task_uuid,
         c.exitCode as access_task_exitCode,
-        b.exitCode as preservation_task_exitCode
+        b.exitCode as preservation_task_exitCode,
+        d.taskUUID as preservation_normalization_validation_task_uuid,
+        d.exitCode as preservation_validation_task_exitCode,
+        d.stdOut as preservation_validation_task_stdOut
     from (
         select
             f.fileUUID,
@@ -73,6 +76,7 @@ def getNormalizationReportQuery(sipUUID, idsRestriction=""):
             f.fileGrpUse in ('original', 'service')
             and f.sipUUID = %s
         ) a 
+
         Left Join (
         select
             j.sipUUID,
@@ -87,6 +91,7 @@ def getNormalizationReportQuery(sipUUID, idsRestriction=""):
             j.jobType = 'Normalize for preservation'
         ) b
         on a.fileUUID = b.fileUUID and a.sipUUID = b.sipUUID
+
         Left Join (
         select
             j.sipUUID,
@@ -101,14 +106,34 @@ def getNormalizationReportQuery(sipUUID, idsRestriction=""):
             j.jobType = 'Normalize for access'
         ) c
         ON a.fileUUID = c.fileUUID AND a.sipUUID = c.sipUUID
+
+        Left Join (
+        select
+            j.sipUUID,
+            t.fileUUID,
+            t.taskUUID,
+            t.exitcode,
+            t.stdOut,
+            dv.sourceFileUUID
+        from 
+            Jobs j 
+            join
+            Tasks t on t.jobUUID = j.jobUUID
+            join
+            Derivations dv on dv.derivedFileUUID = t.fileUUID
+        Where
+            j.jobType = 'Validate preservation normalization'
+        ) d
+        ON a.fileUUID = d.sourceFileUUID AND a.sipUUID = d.sipUUID
+
         WHERE a.sipUUID = %s
         order by (access_normalization_failed + preservation_normalization_failed) desc;
     """
-    
+
     cursor.execute(sql, (sipUUID, sipUUID))
     objects = helpers.dictfetchall(cursor)
     return objects 
-    
+
 
 if __name__ == '__main__':
     import sys
