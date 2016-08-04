@@ -49,14 +49,13 @@ def getNormalizationReportQuery(sipUUID, idsRestriction=""):
         case when a.fileID is not null and c.exitcode = 1 then 1 else 0 end as access_normalization_failed,
         case when b.exitCode < 2 and a.fileID is not null then 1 else 0 end as preservation_normalization_attempted,
         case when a.fileID is not null and b.exitcode = 1 then 1 else 0 end as preservation_normalization_failed,
-        case when d.exitCode < 2 and a.fileID is not null then 1 else 0 end as preservation_normalization_validation_attempted,
-        case when a.fileID is not null and d.exitcode = 1 then 1 else 0 end as preservation_normalization_validation_failed,
         c.taskUUID as access_normalization_task_uuid,
         b.taskUUID as preservation_normalization_task_uuid,
-        d.taskUUID as preservation_normalization_validation_task_uuid,
         c.exitCode as access_task_exitCode,
         b.exitCode as preservation_task_exitCode,
-        d.exitCode as preservation_validation_task_exitCode
+        d.taskUUID as preservation_normalization_validation_task_uuid,
+        d.exitCode as preservation_validation_task_exitCode,
+        d.stdOut as preservation_validation_task_stdOut
     from (
         select
             f.fileUUID,
@@ -115,13 +114,14 @@ def getNormalizationReportQuery(sipUUID, idsRestriction=""):
             t.fileUUID,
             t.taskUUID,
             t.exitcode,
-            d.sourceFileUUID
+            t.stdOut,
+            dv.sourceFileUUID
         from 
             Jobs j 
             join
             Tasks t on t.jobUUID = j.jobUUID
             join
-            Derivations d on d.derivedFileUUID = t.fileUUID
+            Derivations dv on dv.derivedFileUUID = t.fileUUID
         Where
             j.jobType = 'Validate preservation normalization'
         ) d
