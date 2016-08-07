@@ -228,7 +228,7 @@ def data_migration(apps, schema_editor):
         id=vldt_ccss_drvtv_stc_pk,
         execute='validateAccessDerivative_v0.0',
         arguments='"%relativeLocation%" "%fileUUID%" "%SIPUUID%"',
-        filter_subdir='objects/'
+        filter_subdir='DIP/objects/'
     )
 
     # Validate Access Derivatives Task Config.
