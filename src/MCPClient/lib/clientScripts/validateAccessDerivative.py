@@ -19,7 +19,7 @@ class AccessDerivativeValidator(DerivativeValidator):
         """Returns ``True`` if the file with UUID ``self.file_uuid`` encodes an
         access derivative.
         """
-        file_model = File.get(uuid=self.file_uuid)
+        file_model = File.objects.get(uuid=self.file_uuid)
         if file_model.filegrpuse == 'access':
             try:
                 Derivation.objects.get(derived_file__uuid=self.file_uuid,
