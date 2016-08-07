@@ -47,14 +47,19 @@ def getNormalizationReportQuery(sipUUID, idsRestriction=""):
         case when c.exitCode < 2 and a.fileID is not null then 1 else 0 end as access_normalization_attempted,
         case when a.fileID is not null and c.exitcode = 1 then 1 else 0 end as access_normalization_failed,
         case when b.exitCode < 2 and a.fileID is not null then 1 else 0 end as preservation_normalization_attempted,
-        case when a.fileID is not null and b.exitcode = 1 then 1 else 0 end as preservation_normalization_failed,
+        case when a.fileID is not null and b.exitcode = 1 then 1 else 0 end as
+        preservation_normalization_failed,
+
         c.taskUUID as access_normalization_task_uuid,
         b.taskUUID as preservation_normalization_task_uuid,
         c.exitCode as access_task_exitCode,
         b.exitCode as preservation_task_exitCode,
-        d.taskUUID as preservation_normalization_validation_task_uuid,
-        d.exitCode as preservation_validation_task_exitCode,
-        d.stdOut as preservation_validation_task_stdOut
+        d.taskUUID as preservation_derivative_validation_task_uuid,
+        d.exitCode as preservation_derivative_validation_task_exitCode,
+        d.stdOut as preservation_derivative_validation_task_stdOut,
+        e.taskUUID as access_derivative_validation_task_uuid,
+        e.exitCode as access_derivative_validation_task_exitCode,
+        e.stdOut as access_derivative_validation_task_stdOut
     from (
         select
             f.fileUUID,
@@ -122,9 +127,28 @@ def getNormalizationReportQuery(sipUUID, idsRestriction=""):
             join
             Derivations dv on dv.derivedFileUUID = t.fileUUID
         Where
-            j.jobType = 'Validate preservation normalization'
+            j.jobType = 'Validate preservation derivatives'
         ) d
         ON a.fileUUID = d.sourceFileUUID AND a.sipUUID = d.sipUUID
+
+        Left Join (
+        select
+            j.sipUUID,
+            t.fileUUID,
+            t.taskUUID,
+            t.exitcode,
+            t.stdOut,
+            dv.sourceFileUUID
+        from 
+            Jobs j 
+            join
+            Tasks t on t.jobUUID = j.jobUUID
+            join
+            Derivations dv on dv.derivedFileUUID = t.fileUUID
+        Where
+            j.jobType = 'Validate access derivatives'
+        ) e
+        ON a.fileUUID = e.sourceFileUUID AND a.sipUUID = e.sipUUID
 
         WHERE a.sipUUID = %s
         order by (access_normalization_failed + preservation_normalization_failed) desc;

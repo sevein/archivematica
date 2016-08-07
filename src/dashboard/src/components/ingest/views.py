@@ -323,7 +323,7 @@ def ingest_upload(request, uuid):
             access.target = cPickle.dumps({
               "target": request.POST['target'] })
             access.save()
-            response = { 'ready': True }
+            response = {'ready': True}
             return helpers.json_response(response)
     elif request.method == 'GET':
         try:
@@ -340,36 +340,46 @@ def ingest_upload(request, uuid):
     return HttpResponseBadRequest()
 
 
-def process_normalization_validation(obj):
-    """``obj`` encodes information about a specific file and any normalization
-    and normalization validation events performed on it. This function returns
-    a 2-tuple of ints indicating whether normalization validation was attempted
-    and whether it failed.
+def derivative_validation_report(obj):
+    """Return a 4-tuple indicating whether
+    i.   preservation derivative validation was attempted,
+    ii.  preservation derivative validation failed,
+    iii. access derivative validation was attempted,
+    iv.  access derivative validation failed,
+    ::param dict obj:: encodes information about a specific file and any
+        normalization and derivative validation events performed on it.
     """
-    stdOut = obj['preservation_validation_task_stdOut']
-    exitCode = obj['preservation_validation_task_exitCode']
-    preservation_normalization_validation_failed = 1
-    if (    obj['fileID'] and
-            exitCode == 0 and
-            stdOut and
-            '{"eventOutcomeInformation": "pass",' in stdOut):
-        preservation_normalization_validation_failed = 0
-    preservation_normalization_validation_attempted = 0
-    try:
-        skipped = 'was not derived from normalization;' in stdOut
-    except TypeError:
-        skipped = False
-    try:
-        has_stdout = stdOut.strip() != ''
-    except AttributeError:
-        has_stdout = False
-    if (    obj['fileID'] and
-            exitCode < 2 and
-            not skipped and
-            has_stdout):
-        preservation_normalization_validation_attempted = 1
-    return (preservation_normalization_validation_attempted,
-            preservation_normalization_validation_failed)
+    file_id = obj['fileID']
+    preservation_failed, preservation_attempted = \
+        derivative_validation_report_by_purpose(
+            obj['preservation_derivative_validation_task_exitCode'],
+            file_id)
+    access_failed, access_attempted = \
+        derivative_validation_report_by_purpose(
+            obj['access_derivative_validation_task_exitCode'],
+            file_id)
+    return (preservation_attempted,
+            preservation_failed,
+            access_attempted,
+            access_failed)
+
+
+def derivative_validation_report_by_purpose(exit_code, file_id):
+    """Return a 2-tuple indicating whether derivative validation failed and was
+    attempted, respectively.
+    """
+    if file_id:
+        if exit_code == 0:
+            return 0, 1
+        elif exit_code == 1:
+            return 1, 1
+        elif exit_code in (2, None):
+            return 0, 0
+        else:
+            raise ValueError('Derivative validation client script returned an'
+                             ' exit code not in 0, 1, 2: %s' % exit_code)
+    else:
+        return 0, 0
 
 
 def ingest_normalization_report(request, uuid, current_page=None):
@@ -378,13 +388,11 @@ def ingest_normalization_report(request, uuid, current_page=None):
 
     objects = getNormalizationReportQuery(sipUUID=uuid)
     for o in objects:
-        (preservation_normalization_validation_attempted,
-         preservation_normalization_validation_failed) = process_normalization_validation(o)
         o['location'] = archivematicaFunctions.escape(o['location'])
-        o['preservation_normalization_validation_attempted'] = \
-            preservation_normalization_validation_attempted
-        o['preservation_normalization_validation_failed'] = \
-            preservation_normalization_validation_failed
+        (o['preservation_derivative_validation_attempted'],
+         o['preservation_derivative_validation_failed'],
+         o['access_derivative_validation_attempted'],
+         o['access_derivative_validation_failed']) = derivative_validation_report(o)
 
     results_per_page = 10
 
