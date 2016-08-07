@@ -91,7 +91,7 @@ class DerivativeValidator:
                 rule.command.description, exitstatus), stderr, file=sys.stderr)
             return 'failed'
         print('Command {} completed with output {}'.format(
-            rule.command.description, stdout))
+              rule.command.description, stdout))
         # Parse output and generate an Event
         output = ast.literal_eval(stdout)
         event_detail = ('program="{tool.description}";'
