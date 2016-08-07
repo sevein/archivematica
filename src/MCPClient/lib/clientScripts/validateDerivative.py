@@ -11,9 +11,9 @@ from executeOrRunSubProcess import executeOrRun
 import databaseFunctions
 from dicts import replace_string_values
 
-NOT_DERIVATIVE_CODE = 1
-FAIL_CODE = -1
 SUCCESS_CODE = 0
+FAIL_CODE = 1
+NOT_DERIVATIVE_CODE = 2
 
 
 class DerivativeValidator:
