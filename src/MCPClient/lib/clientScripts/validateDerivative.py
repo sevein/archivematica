@@ -14,13 +14,14 @@ from dicts import replace_string_values
 SUCCESS_CODE = 0
 FAIL_CODE = 1
 NOT_DERIVATIVE_CODE = 2
+NO_RULES_CODE = 2
 
 
 class DerivativeValidator:
     """Validates a preservation derivative.
 
-    Call ``validate`` method to determine whether a given file conforms to a
-    given specification (or policy).
+    Initialize on a file and then call the ``validate`` method to determine
+    whether a given file conforms to a given specification (or policy).
 
     Sub-class in order to validate an access derivative. See
     validateAccessDerivative.py.
@@ -38,6 +39,8 @@ class DerivativeValidator:
                   not_derivative_msg=self.not_derivative_msg))
             return NOT_DERIVATIVE_CODE
         rules = self._get_rules()
+        if not rules:
+            return NO_RULES_CODE
         rule_outputs = []
         for rule in rules:
             rule_outputs.append(self._execute_rule_command(rule))
