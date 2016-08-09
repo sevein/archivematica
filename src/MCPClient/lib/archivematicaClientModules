@@ -97,6 +97,7 @@ moveToBacklog_v1.0 = %clientScriptsDirectory%moveToBacklog.py
 normalize_v1.0 = %clientScriptsDirectory%normalize.py
 validatePreservationDerivative_v0.0 = %clientScriptsDirectory%validatePreservationDerivative.py
 validateAccessDerivative_v0.0 = %clientScriptsDirectory%validateAccessDerivative.py
+policyCheck_v0.0 = %clientScriptsDirectory%policyCheck.py
 parseMETStoDB_v1.0 = %clientScriptsDirectory%parse_mets_to_db.py
 postStoreAIPHook_v1.0 = %clientScriptsDirectory%post_store_aip_hook.py
 remove_v0.0 = rm
