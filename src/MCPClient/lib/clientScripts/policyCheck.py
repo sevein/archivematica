@@ -1,6 +1,8 @@
 from __future__ import print_function
-import ast
+import json
 import sys
+
+from custom_handlers import get_script_logger
 
 import django
 django.setup()
@@ -13,18 +15,20 @@ from dicts import replace_string_values
 
 SUCCESS_CODE = 0
 FAIL_CODE = 1
-NOT_DERIVATIVE_CODE = 2
 NO_RULES_CODE = 2
 
 
-class DerivativeValidator:
-    """Validates a preservation derivative.
+class PolicyChecker:
+    """Checks that files (originals or derivatives) conform to specific
+    policies.
 
-    Initialize on a file and then call the ``validate`` method to determine
-    whether a given file conforms to a given specification.
+    - policies for access
+    - policies for preservation
 
-    Sub-class in order to validate an access derivative. See
-    validateAccessDerivative.py.
+    Initialize on a file and then call the ``check`` method to determine
+    whether a given file conforms to the policies that are appropriate to it,
+    given its format and its purpose, i.e., whether it is intended for access
+    or preservation.
     """
 
     def __init__(self, file_path, file_uuid, sip_uuid):
@@ -32,12 +36,7 @@ class DerivativeValidator:
         self.file_uuid = file_uuid
         self.sip_uuid = sip_uuid
 
-    def validate(self):
-        if not self.is_derivative():
-            print('File {uuid} {not_derivative_msg}; not validating.'.format(
-                  uuid=self.file_uuid,
-                  not_derivative_msg=self.not_derivative_msg))
-            return NOT_DERIVATIVE_CODE
+    def check(self):
         rules = self._get_rules()
         if not rules:
             return NO_RULES_CODE
@@ -49,20 +48,26 @@ class DerivativeValidator:
         else:
             return SUCCESS_CODE
 
-    # Override the following two attributes and one method for validation of
-    # access derivatives.
-    purpose = 'validatePreservationDerivative'
-    not_derivative_msg = 'is not a preservation derivative'
-
-    def is_derivative(self):
-        try:
-            Derivation.objects.get(derived_file__uuid=self.file_uuid,
-                                   event__event_type='normalization')
+    def is_for_access(self):
+        """Returns ``True`` if the file with UUID ``self.file_uuid`` is "for"
+        access.
+        """
+        file_model = File.objects.get(uuid=self.file_uuid)
+        if file_model.filegrpuse == 'access':
             return True
-        except Derivation.DoesNotExist:
-            return False
+        return False
+
+    preservation_purpose = 'checkingAgainstPreservationPolicy' # TODO: create in migration.
+    access_purpose = 'checkingAgainstAccessPolicy' # TODO: create in migration.
+
+    def set_purpose(self):
+        if self.is_for_access():
+            self.purpose = self.preservation_purpose
+        else:
+            self.purpose = self.access_purpose
 
     def _get_rules(self):
+        self.set_purpose()
         try:
             fmt = FormatVersion.active.get(
                 fileformatversion__file_uuid=self.file_uuid)
@@ -96,15 +101,16 @@ class DerivativeValidator:
         print('Command {} completed with output {}'.format(
               rule.command.description, stdout))
         # Parse output and generate an Event
-        output = ast.literal_eval(stdout)
+        output = json.loads(stdout)
         event_detail = ('program="{tool.description}";'
                         'version="{tool.version}"'.format(
                             tool=rule.command.tool))
-        if (rule.command.description == 'Validate using MediaConch' and
+        md_pc_dscr 'Check against policy using MediaConch'
+        if (rule.command.description == md_pc_dscr and
                 output.get('eventOutcomeInformation') != 'pass'):
             result = 'failed'
-        print('Creating {} event for {} ({})'
-              .format(self.purpose, self.file_path, self.file_uuid))
+        print('Creating policy checking event for {} ({})'
+              .format(self.file_path, self.file_uuid))
         databaseFunctions.insertIntoEvents(
             fileUUID=self.file_uuid,
             eventType='validation',  # From PREMIS controlled vocab.
@@ -113,3 +119,12 @@ class DerivativeValidator:
             eventOutcomeDetailNote=output.get('eventOutcomeDetailNote'),
         )
         return result
+
+if __name__ == '__main__':
+    logger = get_script_logger(
+        "archivematica.mcp.client.policyCheck")
+    file_path = sys.argv[1]
+    file_uuid = sys.argv[2]
+    sip_uuid = sys.argv[3]
+    policy_checker = PolicyChecker(file_path, file_uuid, sip_uuid)
+    sys.exit(policy_checker.check())

@@ -304,6 +304,85 @@ def data_migration(apps, schema_editor):
             nextmicroservicechainlink=nrmlz_ccss_2_next_link
         )
 
+    ###########################################################################
+    # Policy Check CHAIN LINK, etc.
+    ###########################################################################
+
+    # Policy Check Standard Task Config.
+    policy_check_stc_pk = '0dc703b8-780a-4643-a427-bb60bd5879a8'
+    StandardTaskConfig.objects.create(
+        id=policy_check_stc_pk,
+        execute='policyCheck_v0.0',
+        arguments='"%relativeLocation%" "%fileUUID%" "%SIPUUID%"'
+    )
+
+    # Policy Check Task Config.
+    policy_check_tc_pk = '1dd8e61f-0579-4a87-bfec-60bedb355048'
+    policy_check_tc = TaskConfig.objects.create(
+        id=policy_check_tc_pk,
+        tasktype=for_each_file_type,
+        tasktypepkreference=policy_check_stc_pk,
+        description='Policy checks'
+    )
+
+    # Policy Check Chain Link.
+    # It is positioned between "Set file permissions" and "Remove files without
+    # linking information (failed normalization artifacts etc.)"
+    link_below = nrmlz_prsrvtn_next_link
+    link_above = link_below.exit_codes.first().nextmicroservicechainlink
+    policy_check_cl_pk = '0fd20984-db3c-492b-a512-eedd74bacc82'
+    policy_check_cl = MicroServiceChainLink.objects.create(
+        id=policy_check_cl_pk,
+        currenttask=policy_check_tc,
+        defaultnextchainlink=link_above,
+        microservicegroup=u'Normalize'
+    )
+
+    # Make "Set file permissions" exit to "Policy checks".
+    link_below.defaultnextchainlink = policy_check_cl
+    for exit_code in link_below.exit_codes.all():
+        exit_code.nextmicroservicechainlink = policy_check_cl
+
+    # Make "Policy checks" exit to "Remove files without linking information"
+    for pk, exit_code in (
+            ('a9c2f8b8-e21f-4bf2-af22-e304c23b0143', 0),
+            ('db44f68e-259a-4ff0-a122-d3281d6f2c7d', 1),
+            ('e91cc5ae-9ad7-402c-92dc-f52ca1290e28', 2)):
+        MicroServiceChainLinkExitCode.objects.create(
+            id=pk,
+            microservicechainlink=policy_check_cl,
+            exitcode=exit_code,
+            nextmicroservicechainlink=link_above
+        )
+
+    ###########################################################################
+    # Create MediaConch Command for Policy Checking
+    ###########################################################################
+
+    # MediaConch Command
+    mediaconch_policy_check_command_uuid = \
+        '9ef290f7-5320-4d69-821a-3156fc184b4e'
+    mediaconch_policy_check_command = FPCommand.objects.create(
+        uuid=mediaconch_policy_check_command_uuid,
+        tool=mediaconch_tool,
+        description='Check against policy using MediaConch',
+        command=mediaconch_policy_check_command_script,
+        script_type='pythonScript',
+        command_usage='validation'
+    )
+
+    # MediaConch-against-MKV-for-policyCheckingPreservationFile Rule.
+    # Create the FPR rule that causes 'Check against policy using MediaConch'
+    # command to be used on 'Generic MKV' files intended for preservation in
+    # the "Policy check" micro-service.
+    policy_check_preservation_rule_pk = 'aaaf34ef-c00f-4bb9-85c1-01c0ad5f3a8c'
+    FPRule.objects.create(
+        uuid=policy_check_preservation_rule_pk,
+        purpose='checkingAgainstPreservationPolicy',
+        command=mediaconch_policy_check_command,
+        format=mkv_format
+    )
+
 
 class Migration(migrations.Migration):
 
@@ -476,4 +555,152 @@ def main(target):
 if __name__ == '__main__':
     target = sys.argv[1]
     sys.exit(main(target))
+'''.strip()
+
+
+mediaconch_policy_check_command_script = '''
+import json
+import subprocess
+import sys
+import uuid
+from lxml import etree
+
+NS = '{https://mediaarea.net/mediaconch}'
+
+
+class MediaConchException(Exception):
+    pass
+
+
+class MediaConchPolicyCheckerCommand:
+    """MC Policy Checker Command runs
+    ``mediaconch -mc -iv 4 -fx -p <path_to_policy_xsl_file> <target>``,
+    parses the returned XML, and prints out a JSON report summarizing the
+    results of the policy check.
+
+    Initialize with the path to a policy file then call ``check``::
+
+        >>> checker = MediaConchPolicyCheckerCommand(
+        >>>     '/path/to/my-policy-file.xsd')
+        >>> checker.check('/path/to/my-file')
+    """
+
+    def __init__(self, policy):
+        self.policy = policy
+
+    def parse_mediaconch_output(self, target):
+        """Run ``mediaconch -mc -iv 4 -fx -p <path_to_policy_xsl_file>
+        <target>`` against the file at ``path_to_target`` and return an lxml
+        etree parse of the output.
+        """
+        args = ['mediaconch', '-mc', '-iv', '4', '-fx', '-p', self.policy,
+                target]
+        try:
+            output = subprocess.check_output(args)
+        except subprocess.CalledProcessError:
+            raise MediaConchException("MediaConch failed when running: %s" % (
+                ' '.join(args),))
+        try:
+            return etree.fromstring(output)
+        except etree.XMLSyntaxError:
+            raise MediaConchException(
+                "The MediaConch command failed when attempting to parse the"
+                " XML output by MediaConch")
+
+    def get_policy_check_name(self, policy_check_el):
+        return policy_check_el.attrib.get(
+            'name', 'Unnamed Check %s' % uuid.uuid4())
+
+    def parse_policy_check_test(self, policy_check_el):
+        """Return a 3-tuple parse of the <test> element of the policy <check>
+        element.
+
+        - El1 is outcome ("pass" or "fail" or other?)
+        - El2 is the relevant field (i.e., attribute of the file)
+        - El3 is the actual value of the relevant attribute/field.
+        - El4 is the reason for the failure.
+        """
+        test_el = policy_check_el.find('%stest' % NS)
+        context_el = policy_check_el.find('%scontext' % NS)
+        return (
+            test_el.attrib.get('outcome', 'no outcome'),
+            context_el.attrib.get('field', 'no field'),
+            test_el.attrib.get('actual', 'no actual value'),
+            test_el.attrib.get('reason', 'no reason')
+        )
+
+    def get_policy_checks(self, doc):
+        """Get all of the policy check names and outcomes from the policy check
+        output file parsed as ``doc``.
+        """
+        policy_checks = {}
+        path = '.%smedia/%spolicyChecks/%scheck' % (NS, NS, NS)
+        for policy_check_el in doc.iterfind(path):
+            policy_check_name = self.get_policy_check_name(policy_check_el)
+            policy_checks[policy_check_name] = self.parse_policy_check_test(
+                policy_check_el)
+        return policy_checks
+
+    def get_event_outcome_information_detail(self, policy_checks):
+        """Return a 2-tuple of info and detail.
+        - info: 'pass' or 'fail'
+        - detail: human-readable string indicating which policy checks
+        passed or failed. If the policy check as a whole passed, just return
+        the passed check names; if it failed, just return the failed ones.
+        """
+        failed_policy_checks = []
+        passed_policy_checks = []
+        for name, (out, fie, act, rea) in policy_checks.iteritems():
+            if out == "pass":
+                passed_policy_checks.append(name)
+            else:
+                failed_policy_checks.append(
+                    u'The check "{name}" failed; the actual value for the'
+                    u' field "{fie}" was "{act}"; the reason was'
+                    u' "{rea}".'.format(
+                        name=name,
+                        fie=fie,
+                        act=act,
+                        rea=rea))
+        if failed_policy_checks:
+            return 'fail', u' '.join(failed_policy_checks)
+        elif not passed_policy_checks:
+            return 'pass', u'No checks passed, but none failed either.'
+        else:
+            return 'pass', u'All policy checks passed: %s' % (
+                '; '.join(passed_policy_checks))
+
+    def check(self, target):
+        """Return 0 if MediaConch can successfully assess whether the file at
+        `target` is a valid Matroska (.mkv) file. Parse the XML output by
+        MediaConch and print a JSON representation of that output.
+        """
+        try:
+            doc = self.parse_mediaconch_output(target)
+            policy_checks = self.get_policy_checks(doc)
+            info, detail = self.get_event_outcome_information_detail(
+                policy_checks)
+            print json.dumps({
+                'eventOutcomeInformation': info,
+                'eventOutcomeDetailNote': detail
+            })
+            return 0
+        except MediaConchException as e:
+            return e
+
+
+if __name__ == '__main__line':
+    target = sys.argv[1]
+    # WARNING: just testing; absolute path should not be hard-coded here!
+    policy_checker = MediaConchPolicyCheckerCommand(
+        '/var/archivematica/sharedDirectory/sharedMicroServiceTasksConfigs/'
+        'policies/CAVPP_Access_Video_Files.xsl'
+    )
+    sys.exit(policy_checker.check(target))
+
+if __name__ == '__main__':
+    policy = sys.argv[1]
+    target = sys.argv[2]
+    policy_checker = MediaConchPolicyCheckerCommand(policy)
+    sys.exit(policy_checker.check(target))
 '''.strip()
