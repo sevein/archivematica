@@ -326,24 +326,28 @@ def data_migration(apps, schema_editor):
     )
 
     # Policy Check Chain Link.
-    # It is positioned between "Set file permissions" and "Remove files without
-    # linking information (failed normalization artifacts etc.)"
-    link_below = nrmlz_prsrvtn_next_link
-    link_above = link_below.exit_codes.first().nextmicroservicechainlink
+    # It is positioned before the "Move to metadata reminder" chain link.
+    move_metadata_cl = MicroServiceChainLink.objects.filter(
+        currenttask__description='Move to metadata reminder').first()
     policy_check_cl_pk = '0fd20984-db3c-492b-a512-eedd74bacc82'
     policy_check_cl = MicroServiceChainLink.objects.create(
         id=policy_check_cl_pk,
         currenttask=policy_check_tc,
-        defaultnextchainlink=link_above,
-        microservicegroup=u'Normalize'
+        defaultnextchainlink=move_metadata_cl,
+        microservicegroup=u'Policy checks'
     )
 
-    # Make "Set file permissions" exit to "Policy checks".
-    link_below.defaultnextchainlink = policy_check_cl
-    for exit_code in link_below.exit_codes.all():
-        exit_code.nextmicroservicechainlink = policy_check_cl
+    # Configure any links that exit to "Move to metadata reminder" to now exit
+    # to "Policy checks".
+    for link in MicroServiceChainLink.objects.all():
+        if link != policy_check_cl:
+            if link.defaultnextchainlink == move_metadata_cl:
+                link.defaultnextchainlink = policy_check_cl
+            for exit_code in link.exit_codes.all():
+                if exit_code.nextmicroservicechainlink == move_metadata_cl:
+                    exit_code.nextmicroservicechainlink = policy_check_cl
 
-    # Make "Policy checks" exit to "Remove files without linking information"
+    # Make "Policy checks" exit to "Move to metadata reminder"
     for pk, exit_code in (
             ('a9c2f8b8-e21f-4bf2-af22-e304c23b0143', 0),
             ('db44f68e-259a-4ff0-a122-d3281d6f2c7d', 1),
@@ -352,7 +356,7 @@ def data_migration(apps, schema_editor):
             id=pk,
             microservicechainlink=policy_check_cl,
             exitcode=exit_code,
-            nextmicroservicechainlink=link_above
+            nextmicroservicechainlink=move_metadata_cl
         )
 
     ###########################################################################
