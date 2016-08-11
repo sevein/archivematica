@@ -381,7 +381,7 @@ def data_migration(apps, schema_editor):
     policy_check_preservation_rule_pk = 'aaaf34ef-c00f-4bb9-85c1-01c0ad5f3a8c'
     FPRule.objects.create(
         uuid=policy_check_preservation_rule_pk,
-        purpose='checkingAgainstPreservationPolicy',
+        purpose='checkingPreservationPolicy',
         command=mediaconch_policy_check_command,
         format=mkv_format
     )
@@ -692,7 +692,7 @@ class MediaConchPolicyCheckerCommand:
             return e
 
 
-if __name__ == '__main__line':
+if __name__ == '__main__':
     target = sys.argv[1]
     # WARNING: just testing; absolute path should not be hard-coded here!
     policy_checker = MediaConchPolicyCheckerCommand(
@@ -701,7 +701,7 @@ if __name__ == '__main__line':
     )
     sys.exit(policy_checker.check(target))
 
-if __name__ == '__main__':
+if __name__ == '__main__line':
     policy = sys.argv[1]
     target = sys.argv[2]
     policy_checker = MediaConchPolicyCheckerCommand(policy)
