@@ -14,9 +14,11 @@ from executeOrRunSubProcess import executeOrRun
 import databaseFunctions
 from dicts import replace_string_values
 
+# Note that linkTaskManagerFiles.py will take the highest exit code it has seen
+# from all tasks and will use that as the exit code of the job as a whole.
 SUCCESS_CODE = 0
+NOT_APPLICABLE_CODE = 0
 FAIL_CODE = 1
-NOT_APPLICABLE_CODE = 2
 
 
 class PolicyChecker:
@@ -32,10 +34,11 @@ class PolicyChecker:
     or preservation.
     """
 
-    def __init__(self, file_path, file_uuid, sip_uuid):
+    def __init__(self, file_path, file_uuid, sip_uuid, policies_dir):
         self.file_path = file_path
         self.file_uuid = file_uuid
         self.sip_uuid = sip_uuid
+        self.policies_dir = policies_dir
 
     def check(self):
         try:
@@ -94,7 +97,8 @@ class PolicyChecker:
         command_to_execute, args = self._get_command_to_execute(rule)
         print('Running', rule.command.description)
         exitstatus, stdout, stderr = executeOrRun(
-            rule.command.script_type, command_to_execute, arguments=args)
+            rule.command.script_type, command_to_execute, arguments=args,
+            printing=False)
         if exitstatus != 0:
             print('Command {} failed with exit status {}; stderr:'.format(
                   rule.command.description, exitstatus), stderr,
@@ -112,6 +116,13 @@ class PolicyChecker:
         mc_pc_dscr = 'Check against policy using MediaConch'
         if (rule.command.description == mc_pc_dscr and
                 output.get('eventOutcomeInformation') != 'pass'):
+            print('Command {descr} returned a non-pass outcome for the policy'
+                  ' check;\n\noutcome: {outcome}\n\ndetails: {details}.'
+                  .format(
+                      descr=rule.command.description,
+                      outcome=output.get('eventOutcomeInformation'),
+                      details=output.get('eventOutcomeDetailNote')),
+                  file=sys.stderr)
             result = 'failed'
         print('Creating policy checking event for {} ({})'
               .format(self.file_path, self.file_uuid))
@@ -132,12 +143,7 @@ class PolicyChecker:
                                           sip=self.sip_uuid, type_='file'),
                     [])
         else:
-            # '/var/archivematica/sharedDirectory/sharedMicroServiceTasksConfigs/policies/
-            policies_dir = replace_string_values(
-                '%sharedPath%/sharedMicroServiceTasksConfigs/policies/',
-                file_=self.file_uuid, sip=self.sip_uuid, type_='file'),
-            print('BLARGON: FOX: JOEL: policies_dir in policyCheck: {}'.format(policies_dir))
-            return (rule.command.command, [self.file_path, policies_dir])
+            return (rule.command.command, [self.file_path, self.policies_dir])
 
 if __name__ == '__main__':
     logger = get_script_logger(
@@ -145,5 +151,7 @@ if __name__ == '__main__':
     file_path = sys.argv[1]
     file_uuid = sys.argv[2]
     sip_uuid = sys.argv[3]
-    policy_checker = PolicyChecker(file_path, file_uuid, sip_uuid)
+    policies_dir = sys.argv[4]
+    policy_checker = PolicyChecker(file_path, file_uuid, sip_uuid,
+                                   policies_dir)
     sys.exit(policy_checker.check())

@@ -313,7 +313,8 @@ def data_migration(apps, schema_editor):
     StandardTaskConfig.objects.create(
         id=policy_check_stc_pk,
         execute='policyCheck_v0.0',
-        arguments='"%relativeLocation%" "%fileUUID%" "%SIPUUID%"'
+        arguments=('"%relativeLocation%" "%fileUUID%" "%SIPUUID%"'
+                   ' "%sharedPath%/sharedMicroServiceTasksConfigs/policies/"')
     )
 
     # Policy Check Task Config.
@@ -347,14 +348,16 @@ def data_migration(apps, schema_editor):
         .update(defaultnextchainlink=policy_check_cl)
 
     # Make "Policy checks" exit to "Move to metadata reminder"
-    for pk, exit_code in (
-            ('a9c2f8b8-e21f-4bf2-af22-e304c23b0143', 0),
-            ('db44f68e-259a-4ff0-a122-d3281d6f2c7d', 1),
-            ('e91cc5ae-9ad7-402c-92dc-f52ca1290e28', 2)):
+    for pk, exit_code, exit_message in (
+            ('a9c2f8b8-e21f-4bf2-af22-e304c23b0143', 0,
+             'Completed successfully'),
+            ('db44f68e-259a-4ff0-a122-d3281d6f2c7d', 1,
+             'Failed')):
         MicroServiceChainLinkExitCode.objects.create(
             id=pk,
             microservicechainlink=policy_check_cl,
             exitcode=exit_code,
+            exitmessage=exit_message,
             nextmicroservicechainlink=move_metadata_cl
         )
 
