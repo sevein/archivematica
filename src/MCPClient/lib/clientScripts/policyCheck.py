@@ -1,3 +1,4 @@
+#!/usr/bin/env python2
 from __future__ import print_function
 import json
 import sys
@@ -7,7 +8,7 @@ from custom_handlers import get_script_logger
 import django
 django.setup()
 from fpr.models import FPRule, FormatVersion
-from main.models import Derivation
+from main.models import File
 
 from executeOrRunSubProcess import executeOrRun
 import databaseFunctions
@@ -15,7 +16,7 @@ from dicts import replace_string_values
 
 SUCCESS_CODE = 0
 FAIL_CODE = 1
-NO_RULES_CODE = 2
+NOT_APPLICABLE_CODE = 2
 
 
 class PolicyChecker:
@@ -37,9 +38,17 @@ class PolicyChecker:
         self.sip_uuid = sip_uuid
 
     def check(self):
+        try:
+            self.file_model = File.objects.get(uuid=self.file_uuid)
+        except File.DoesNotExist:
+            print('Not performing a policy check because there is no file with'
+                  ' UUID {}.'.format(self.file_uuid))
+            return NOT_APPLICABLE_CODE
         rules = self._get_rules()
         if not rules:
-            return NO_RULES_CODE
+            print('Not performing a policy check because there are no relevant'
+                  ' FPR rules')
+            return NOT_APPLICABLE_CODE
         rule_outputs = []
         for rule in rules:
             rule_outputs.append(self._execute_rule_command(rule))
@@ -52,29 +61,35 @@ class PolicyChecker:
         """Returns ``True`` if the file with UUID ``self.file_uuid`` is "for"
         access.
         """
-        file_model = File.objects.get(uuid=self.file_uuid)
-        if file_model.filegrpuse == 'access':
+        if self.file_model.filegrpuse == 'access':
             return True
         return False
 
-    preservation_purpose = 'checkingAgainstPreservationPolicy' # TODO: create in migration.
-    access_purpose = 'checkingAgainstAccessPolicy' # TODO: create in migration.
+    preservation_purpose = 'checkingPreservationPolicy'
+    access_purpose = 'checkingAccessPolicy'
 
     def set_purpose(self):
         if self.is_for_access():
-            self.purpose = self.preservation_purpose
-        else:
             self.purpose = self.access_purpose
+        else:
+            self.purpose = self.preservation_purpose
 
     def _get_rules(self):
         self.set_purpose()
+        print('policyCheck purpose: {}'.format(self.purpose))
         try:
             fmt = FormatVersion.active.get(
                 fileformatversion__file_uuid=self.file_uuid)
         except FormatVersion.DoesNotExist:
             rules = fmt = None
         if fmt:
+            print('policyCheck has fmt: {}'.format(fmt))
             rules = FPRule.active.filter(format=fmt.uuid, purpose=self.purpose)
+            if not rules:
+                print('policyCheck could fine no FPRule models with format uuid {}'
+                      ' and purpose {}'.format(fmt.uuid, self.purpose))
+        else:
+            print('policyCheck has NO fmt!!!')
         # Check default rules.
         if not rules:
             rules = FPRule.active.filter(
@@ -82,6 +97,9 @@ class PolicyChecker:
         return rules
 
     def _execute_rule_command(self, rule):
+
+        print('BLARGON! _execute_rule_command ', rule.command.description)
+
         result = 'passed'
         if rule.command.script_type in ('bashScript', 'command'):
             command_to_execute = replace_string_values(
@@ -95,6 +113,9 @@ class PolicyChecker:
         exitstatus, stdout, stderr = executeOrRun(
             rule.command.script_type, command_to_execute, arguments=args)
         if exitstatus != 0:
+
+            print('BLARGON! failed with exitstatus:', exitstatus)
+
             print('Command {} failed with exit status {}; stderr:'.format(
                 rule.command.description, exitstatus), stderr, file=sys.stderr)
             return 'failed'
@@ -105,9 +126,12 @@ class PolicyChecker:
         event_detail = ('program="{tool.description}";'
                         'version="{tool.version}"'.format(
                             tool=rule.command.tool))
-        md_pc_dscr 'Check against policy using MediaConch'
+        md_pc_dscr = 'Check against policy using MediaConch'
         if (rule.command.description == md_pc_dscr and
                 output.get('eventOutcomeInformation') != 'pass'):
+
+            print('BLARGON! failed based on JSON output', output)
+
             result = 'failed'
         print('Creating policy checking event for {} ({})'
               .format(self.file_path, self.file_uuid))
