@@ -339,13 +339,12 @@ def data_migration(apps, schema_editor):
 
     # Configure any links that exit to "Move to metadata reminder" to now exit
     # to "Policy checks".
-    for link in MicroServiceChainLink.objects.all():
-        if link != policy_check_cl:
-            if link.defaultnextchainlink == move_metadata_cl:
-                link.defaultnextchainlink = policy_check_cl
-            for exit_code in link.exit_codes.all():
-                if exit_code.nextmicroservicechainlink == move_metadata_cl:
-                    exit_code.nextmicroservicechainlink = policy_check_cl
+    MicroServiceChainLinkExitCode.objects\
+        .filter(nextmicroservicechainlink=move_metadata_cl)\
+        .update(nextmicroservicechainlink=policy_check_cl)
+    MicroServiceChainLink.objects\
+        .filter(defaultnextchainlink=move_metadata_cl)\
+        .update(defaultnextchainlink=policy_check_cl)
 
     # Make "Policy checks" exit to "Move to metadata reminder"
     for pk, exit_code in (
