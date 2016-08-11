@@ -398,6 +398,7 @@ class Migration(migrations.Migration):
     ]
 
 mediaconch_command_script = '''
+from __future__ import print_function
 import json
 import subprocess
 import sys
@@ -405,6 +406,9 @@ import uuid
 
 from lxml import etree
 
+
+SUCCESS_CODE = 0
+ERROR_CODE = 1
 NS = '{https://mediaarea.net/mediaconch}'
 
 
@@ -539,20 +543,23 @@ def main(target):
     """Return 0 if MediaConch can successfully assess whether the file at
     `target` is a valid Matroska (.mkv) file. Parse the XML output by
     MediaConch and print a JSON representation of that output.
-
     """
 
     try:
         doc = parse_mediaconch_data(target)
         impl_checks = get_impl_checks(doc)
         info, detail = get_event_outcome_information_detail(impl_checks)
-        print json.dumps({
+        print(json.dumps({
             'eventOutcomeInformation': info,
             'eventOutcomeDetailNote': detail
-        })
-        return 0
+        }))
+        return SUCCESS_CODE
     except MediaConchException as e:
-        return e
+        print(json.dumps({
+            'eventOutcomeInformation': 'fail',
+            'eventOutcomeDetailNote': str(e)
+        }), file=sys.stderr)
+        return ERROR_CODE
 
 
 if __name__ == '__main__':
@@ -562,12 +569,17 @@ if __name__ == '__main__':
 
 
 mediaconch_policy_check_command_script = '''
+from __future__ import print_function
 import json
+import os
 import subprocess
 import sys
 import uuid
 from lxml import etree
 
+
+SUCCESS_CODE = 0
+ERROR_CODE = 1
 NS = '{https://mediaarea.net/mediaconch}'
 
 
@@ -584,20 +596,24 @@ class MediaConchPolicyCheckerCommand:
     Initialize with the path to a policy file then call ``check``::
 
         >>> checker = MediaConchPolicyCheckerCommand(
-        >>>     '/path/to/my-policy-file.xsd')
-        >>> checker.check('/path/to/my-file')
+        >>>     '/path/to/policies-dir/',
+        >>>     'my-policy-file.xsd')
+        >>> checker.check('/path/to/file-to-be-checked')
     """
 
-    def __init__(self, policy):
-        self.policy = policy
+    def __init__(self, policies_path, policy_filename):
+        self.policy_file_path = os.path.join(policies_path, policy_filename)
 
     def parse_mediaconch_output(self, target):
         """Run ``mediaconch -mc -iv 4 -fx -p <path_to_policy_xsl_file>
         <target>`` against the file at ``path_to_target`` and return an lxml
         etree parse of the output.
         """
-        args = ['mediaconch', '-mc', '-iv', '4', '-fx', '-p', self.policy,
-                target]
+        if not os.path.isfile(self.policy_file_path):
+            raise MediaConchException(
+                'There is no policy file at {}'.format(self.policy_file_path))
+        args = ['mediaconch', '-mc', '-iv', '4', '-fx', '-p',
+                self.policy_file_path, target]
         try:
             output = subprocess.check_output(args)
         except subprocess.CalledProcessError:
@@ -683,27 +699,31 @@ class MediaConchPolicyCheckerCommand:
             policy_checks = self.get_policy_checks(doc)
             info, detail = self.get_event_outcome_information_detail(
                 policy_checks)
-            print json.dumps({
+            print(json.dumps({
                 'eventOutcomeInformation': info,
                 'eventOutcomeDetailNote': detail
-            })
-            return 0
+            }))
+            return SUCCESS_CODE
         except MediaConchException as e:
-            return e
+            print(json.dumps({
+                'eventOutcomeInformation': 'fail',
+                'eventOutcomeDetailNote': str(e)
+            }), file=sys.stderr)
+            return ERROR_CODE
 
 
 if __name__ == '__main__':
-    target = sys.argv[1]
-    # WARNING: just testing; absolute path should not be hard-coded here!
-    policy_checker = MediaConchPolicyCheckerCommand(
-        '/var/archivematica/sharedDirectory/sharedMicroServiceTasksConfigs/'
-        'policies/CAVPP_Access_Video_Files.xsl'
-    )
-    sys.exit(policy_checker.check(target))
 
-if __name__ == '__main__line':
-    policy = sys.argv[1]
-    target = sys.argv[2]
-    policy_checker = MediaConchPolicyCheckerCommand(policy)
+    # A MediaConch policy file must exist at ``policy_filename`` in
+    # ``%sharedDirectory%/sharedMicroServiceTasksConfigs/policies/``.
+    # To create new MediaConch-based policy checker FPR commands, just copy
+    # this entire script and replace the single ``policy_filename`` var with
+    # the name of a different policy file.
+    policy_filename = 'CAVPP_Access_Video_Files.xsl'
+
+    target = sys.argv[1]
+    policies_path = sys.argv[2]
+    policy_checker = MediaConchPolicyCheckerCommand(policies_path,
+                                                    policy_filename)
     sys.exit(policy_checker.check(target))
 '''.strip()

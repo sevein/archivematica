@@ -76,20 +76,13 @@ class PolicyChecker:
 
     def _get_rules(self):
         self.set_purpose()
-        print('policyCheck purpose: {}'.format(self.purpose))
         try:
             fmt = FormatVersion.active.get(
                 fileformatversion__file_uuid=self.file_uuid)
         except FormatVersion.DoesNotExist:
             rules = fmt = None
         if fmt:
-            print('policyCheck has fmt: {}'.format(fmt))
             rules = FPRule.active.filter(format=fmt.uuid, purpose=self.purpose)
-            if not rules:
-                print('policyCheck could fine no FPRule models with format uuid {}'
-                      ' and purpose {}'.format(fmt.uuid, self.purpose))
-        else:
-            print('policyCheck has NO fmt!!!')
         # Check default rules.
         if not rules:
             rules = FPRule.active.filter(
@@ -97,44 +90,32 @@ class PolicyChecker:
         return rules
 
     def _execute_rule_command(self, rule):
-
-        print('BLARGON! _execute_rule_command ', rule.command.description)
-
         result = 'passed'
-        if rule.command.script_type in ('bashScript', 'command'):
-            command_to_execute = replace_string_values(
-                rule.command.command, file_=self.file_uuid, sip=self.sip_uuid,
-                type_='file')
-            args = []
-        else:
-            command_to_execute = rule.command.command
-            args = [self.file_path]
+        command_to_execute, args = self._get_command_to_execute(rule)
         print('Running', rule.command.description)
         exitstatus, stdout, stderr = executeOrRun(
             rule.command.script_type, command_to_execute, arguments=args)
         if exitstatus != 0:
-
-            print('BLARGON! failed with exitstatus:', exitstatus)
-
             print('Command {} failed with exit status {}; stderr:'.format(
-                rule.command.description, exitstatus), stderr, file=sys.stderr)
+                  rule.command.description, exitstatus), stderr,
+                  file=sys.stderr)
             return 'failed'
         print('Command {} completed with output {}'.format(
               rule.command.description, stdout))
         # Parse output and generate an Event
+        # TODO: can we assume that all policy check commands will print JSON to
+        # stdout?
         output = json.loads(stdout)
         event_detail = ('program="{tool.description}";'
-                        'version="{tool.version}"'.format(
+                        ' version="{tool.version}"'.format(
                             tool=rule.command.tool))
-        md_pc_dscr = 'Check against policy using MediaConch'
-        if (rule.command.description == md_pc_dscr and
+        mc_pc_dscr = 'Check against policy using MediaConch'
+        if (rule.command.description == mc_pc_dscr and
                 output.get('eventOutcomeInformation') != 'pass'):
-
-            print('BLARGON! failed based on JSON output', output)
-
             result = 'failed'
         print('Creating policy checking event for {} ({})'
               .format(self.file_path, self.file_uuid))
+        # TODO/QUESTION: should this be a 'validation'-type event?
         databaseFunctions.insertIntoEvents(
             fileUUID=self.file_uuid,
             eventType='validation',  # From PREMIS controlled vocab.
@@ -143,6 +124,20 @@ class PolicyChecker:
             eventOutcomeDetailNote=output.get('eventOutcomeDetailNote'),
         )
         return result
+
+    def _get_command_to_execute(self, rule):
+        if rule.command.script_type in ('bashScript', 'command'):
+            return (replace_string_values(rule.command.command,
+                                          file_=self.file_uuid,
+                                          sip=self.sip_uuid, type_='file'),
+                    [])
+        else:
+            # '/var/archivematica/sharedDirectory/sharedMicroServiceTasksConfigs/policies/
+            policies_dir = replace_string_values(
+                '%sharedPath%/sharedMicroServiceTasksConfigs/policies/',
+                file_=self.file_uuid, sip=self.sip_uuid, type_='file'),
+            print('BLARGON: FOX: JOEL: policies_dir in policyCheck: {}'.format(policies_dir))
+            return (rule.command.command, [self.file_path, policies_dir])
 
 if __name__ == '__main__':
     logger = get_script_logger(
