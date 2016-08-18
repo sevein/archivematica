@@ -99,13 +99,14 @@ class PolicyChecker:
         exitstatus, stdout, stderr = executeOrRun(
             rule.command.script_type, command_to_execute, arguments=args,
             printing=False)
-        if exitstatus != 0:
+        if exitstatus == 0:
+            print('Command {} completed with output {}'.format(
+                  rule.command.description, stdout))
+        else:
             print('Command {} failed with exit status {}; stderr:'.format(
                   rule.command.description, exitstatus), stderr,
                   file=sys.stderr)
             return 'failed'
-        print('Command {} completed with output {}'.format(
-              rule.command.description, stdout))
         # Parse output and generate an Event
         # TODO: can we assume that all policy check commands will print JSON to
         # stdout?
