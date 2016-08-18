@@ -514,10 +514,10 @@ def get_event_outcome_information_detail(impl_checks):
     info = 'pass'
     failed_impl_checks = []
     passed_impl_checks = []
-    for impl_check, checks in impl_checks.iteritems():
+    for impl_check, checks in impl_checks.items():
         passed_checks = []
         failed_checks = []
-        for check, outcomes in checks.iteritems():
+        for check, outcomes in checks.items():
             for outcome in outcomes:
                 if outcome == 'pass':
                     passed_checks.append(check)
@@ -643,10 +643,15 @@ class MediaConchPolicyCheckerCommand:
         - El4 is the reason for the failure.
         """
         test_el = policy_check_el.find('%stest' % NS)
+        if test_el is None:
+            return None
+        field = 'no field'
         context_el = policy_check_el.find('%scontext' % NS)
+        if context_el is not None:
+            field = context_el.attrib.get('field', 'no field'),
         return (
             test_el.attrib.get('outcome', 'no outcome'),
-            context_el.attrib.get('field', 'no field'),
+            field,
             test_el.attrib.get('actual', 'no actual value'),
             test_el.attrib.get('reason', 'no reason')
         )
@@ -659,8 +664,9 @@ class MediaConchPolicyCheckerCommand:
         path = '.%smedia/%spolicyChecks/%scheck' % (NS, NS, NS)
         for policy_check_el in doc.iterfind(path):
             policy_check_name = self.get_policy_check_name(policy_check_el)
-            policy_checks[policy_check_name] = self.parse_policy_check_test(
-                policy_check_el)
+            parse = self.parse_policy_check_test(policy_check_el)
+            if parse:
+                policy_checks[policy_check_name] = parse
         return policy_checks
 
     def get_event_outcome_information_detail(self, policy_checks):
@@ -672,7 +678,7 @@ class MediaConchPolicyCheckerCommand:
         """
         failed_policy_checks = []
         passed_policy_checks = []
-        for name, (out, fie, act, rea) in policy_checks.iteritems():
+        for name, (out, fie, act, rea) in policy_checks.items():
             if out == "pass":
                 passed_policy_checks.append(name)
             else:
