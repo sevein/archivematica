@@ -13,8 +13,10 @@ from dicts import replace_string_values
 
 SUCCESS_CODE = 0
 FAIL_CODE = 1
-NOT_DERIVATIVE_CODE = 2
-NO_RULES_CODE = 2
+# NOT_DERIVATIVE_CODE = 2
+NOT_DERIVATIVE_CODE = 0
+# NO_RULES_CODE = 2
+NO_RULES_CODE = 0
 
 
 class DerivativeValidator:
