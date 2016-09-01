@@ -730,7 +730,8 @@ if __name__ == '__main__':
     # To create new MediaConch-based policy checker FPR commands, just copy
     # this entire script and replace the single ``policy_filename`` var with
     # the name of a different policy file.
-    policy_filename = 'CAVPP_Access_Video_Files.xsl'
+    # policy_filename = 'CAVPP_Access_Video_Files.xsl'
+    policy_filename = 'NYULibraries_MKVFFV1-MODIFIED.xsl'
 
     target = sys.argv[1]
     policies_path = sys.argv[2]
