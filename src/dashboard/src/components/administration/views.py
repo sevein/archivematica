@@ -30,6 +30,7 @@ from django.forms.models import modelformset_factory
 from django.http import Http404, HttpResponseNotAllowed, HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.template import RequestContext
+from django.utils.text import get_valid_filename
 
 from main import forms
 from main import models
@@ -493,6 +494,57 @@ def api(request):
 
     hide_features = helpers.hidden_features()
     return render(request, 'administration/api.html', locals())
+
+def policies(request):
+    """List MediaConch policies. Upload new one on POST"""
+    policies_path = helpers.policies_path()
+    if request.method == 'POST':
+        for filename, file_ in request.FILES.iteritems():
+            filename = get_valid_filename(file_.name)
+            file_path = os.path.join(policies_path, filename)
+            if os.path.isfile(file_path):
+                messages.error(request, 'A policy named {} already exists.'
+                    ' Please rename your policy prior to'
+                    ' upload.'.format(filename))
+            # Base-level validation: checking for XML content_type. Could be more advanced ...
+            elif file_.content_type != 'text/xml':
+                messages.error(request, 'Policy files must be .xsl files')
+            else:
+                with open(file_path, 'w') as f:
+                    f.write(file_.read())
+                messages.info(request, 'Added!')
+    policies = os.listdir(helpers.policies_path())
+    return render(request, 'administration/policies.html', locals())
+
+def policy_delete_context(request, policy):
+    prompt = 'Delete MediaConch policy {}?'.format(policy)
+    cancel_url = reverse('components.administration.views.policies')
+    return RequestContext(request, {'action': 'Delete',
+                                    'prompt': prompt,
+                                    'cancel_url': cancel_url})
+
+@decorators.confirm_required('simple_confirm.html', policy_delete_context)
+def delete_policy(request, policy):
+    """Delete MediaConch policy file named ``policy``."""
+    policy_path = os.path.join(helpers.policies_path(), policy)
+    if os.path.isfile(policy_path):
+        os.remove(policy_path)
+        messages.warning(request, 'Deleted')
+    else:
+        messages.error(request, 'There is no policy named {}'.format(policy))
+    return HttpResponseRedirect(
+        reverse('components.administration.views.policies'))
+
+def view_policy(request, policy):
+    """View MediaConch policy file named ``policy``."""
+    policy_path = os.path.join(helpers.policies_path(), policy)
+    if os.path.isfile(policy_path):
+        with open(policy_path) as f:
+            policy_text = f.read()
+    else:
+        messages.error(request, 'There is no policy named {}'.format(policy))
+        policy_text = None
+    return render(request, 'administration/policy.html', locals())
 
 def taxonomy(request):
     taxonomies = models.Taxonomy.objects.all().order_by('name')
