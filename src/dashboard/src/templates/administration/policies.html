@@ -1,0 +1,62 @@
+{% extends "layout_fluid.html" %}
+{% load breadcrumb %}
+
+{% block title %}Administration{% endblock %}
+{% block h1 %}Administration{% endblock %}
+{% block page_id %}Administration{% endblock %}
+
+{% block js %}
+{% endblock %}
+
+{% block css %}
+{% endblock %}
+
+{% block content %}
+
+  <div class="row">
+
+    {% include "administration/sidebar.html" %}
+
+    <div class="span12">
+
+      <h3>Policies</h3>
+
+      {% if policies %}
+
+        <table>
+
+          <tr>
+            <th>Policy</th>
+            <th>&nbsp;</th>
+          </tr>
+
+          {% for policy in policies %}
+            <tr>
+              <td><a href="{% url 'components.administration.views.view_policy' policy %}"
+                >{{ policy }}</a></td>
+              <td><a class="btn danger small"
+                     href="{% url 'components.administration.views.delete_policy' policy %}"
+                  >Delete</a></td>
+            </tr>
+          {% endfor %}
+
+        </table>
+
+      {% else %}
+        <p>No MediaConch policies have been uploaded yet.</p>
+      {% endif %}
+
+      <div class="actions">
+        <form action='{% url 'components.administration.views.policies' %}'
+              method='post' enctype='multipart/form-data'>
+          <input type='file' name='policy'>
+          <input type='submit' value='Add new'>
+        </form>
+      </div>
+
+    </div>
+
+  </div>
+
+{% endblock %}
+
