@@ -307,49 +307,79 @@ def data_migration(apps, schema_editor):
         )
 
     ###########################################################################
-    # Policy Check CHAIN LINK, etc.
+    # Policy Check for Derivative CHAIN LINKs, etc.
     ###########################################################################
 
-    # Policy Check Standard Task Config.
-    policy_check_stc_pk = '0dc703b8-780a-4643-a427-bb60bd5879a8'
+    # Preservation Derivative Policy Check Standard Task Config.
+    prsrvtn_drvtv_policy_check_stc_pk = '0dc703b8-780a-4643-a427-bb60bd5879a8'
     StandardTaskConfig.objects.create(
-        id=policy_check_stc_pk,
-        execute='policyCheck_v0.0',
+        id=prsrvtn_drvtv_policy_check_stc_pk,
+        execute='policyCheckPreservationDerivative_v0.0',
         arguments=('"%relativeLocation%" "%fileUUID%" "%SIPUUID%"'
                    ' "%sharedPath%/sharedMicroServiceTasksConfigs/policies/"')
     )
 
-    # Policy Check Task Config.
-    policy_check_tc_pk = '1dd8e61f-0579-4a87-bfec-60bedb355048'
-    policy_check_tc = TaskConfig.objects.create(
-        id=policy_check_tc_pk,
-        tasktype=for_each_file_type,
-        tasktypepkreference=policy_check_stc_pk,
-        description='Policy checks'
+    # Access Derivative Policy Check Standard Task Config.
+    ccss_drvtv_policy_check_stc_pk = '0872e8ff-5b1b-4c00-a5ea-72efc498fcbf'
+    StandardTaskConfig.objects.create(
+        id=ccss_drvtv_policy_check_stc_pk,
+        execute='policyCheckAccessDerivative_v0.0',
+        arguments=('"%relativeLocation%" "%fileUUID%" "%SIPUUID%"'
+                   ' "%sharedPath%/sharedMicroServiceTasksConfigs/policies/"')
     )
 
-    # Policy Check Chain Link.
+    # Preservation Derivative Policy Check Task Config.
+    prsrvtn_drvtv_policy_check_tc_pk = '1dd8e61f-0579-4a87-bfec-60bedb355048'
+    prsrvtn_drvtv_policy_check_tc = TaskConfig.objects.create(
+        id=prsrvtn_drvtv_policy_check_tc_pk,
+        tasktype=for_each_file_type,
+        tasktypepkreference=prsrvtn_drvtv_policy_check_stc_pk,
+        description='Policy checks for preservation derivatives'
+    )
+
+    # Access Derivative Policy Check Task Config.
+    ccss_drvtv_policy_check_tc_pk = '4a8d87e2-4a9a-4ad7-9b4c-d433c9281539'
+    ccss_drvtv_policy_check_tc = TaskConfig.objects.create(
+        id=ccss_drvtv_policy_check_tc_pk,
+        tasktype=for_each_file_type,
+        tasktypepkreference=ccss_drvtv_policy_check_stc_pk,
+        description='Policy checks for access derivatives'
+    )
+
+    # Access Derivative Policy Check Chain Link.
     # It is positioned before the "Move to metadata reminder" chain link.
     move_metadata_cl = MicroServiceChainLink.objects.filter(
         currenttask__description='Move to metadata reminder').first()
-    policy_check_cl_pk = '0fd20984-db3c-492b-a512-eedd74bacc82'
-    policy_check_cl = MicroServiceChainLink.objects.create(
-        id=policy_check_cl_pk,
-        currenttask=policy_check_tc,
+    ccss_drvtv_policy_check_cl_pk = '3bbfbd27-ba41-4e36-8b7f-b4f02676bda3'
+    ccss_drvtv_policy_check_cl = MicroServiceChainLink.objects.create(
+        id=ccss_drvtv_policy_check_cl_pk,
+        currenttask=ccss_drvtv_policy_check_tc,
         defaultnextchainlink=move_metadata_cl,
-        microservicegroup=u'Policy checks'
+        microservicegroup=u'Policy checks for derivatives'
+    )
+
+    # "Policy checks for preservation derivatives" chain link.
+    # It is positioned before the "Policy checks for access derivatives"
+    # chain link.
+    prsrvtn_drvtv_policy_check_cl_pk = '0fd20984-db3c-492b-a512-eedd74bacc82'
+    prsrvtn_drvtv_policy_check_cl = MicroServiceChainLink.objects.create(
+        id=prsrvtn_drvtv_policy_check_cl_pk,
+        currenttask=prsrvtn_drvtv_policy_check_tc,
+        defaultnextchainlink=ccss_drvtv_policy_check_cl,
+        microservicegroup=u'Policy checks for derivatives'
     )
 
     # Configure any links that exit to "Move to metadata reminder" to now exit
-    # to "Policy checks".
+    # to "Policy checks for preservation derivatives".
     MicroServiceChainLinkExitCode.objects\
         .filter(nextmicroservicechainlink=move_metadata_cl)\
-        .update(nextmicroservicechainlink=policy_check_cl)
+        .update(nextmicroservicechainlink=prsrvtn_drvtv_policy_check_cl)
     MicroServiceChainLink.objects\
         .filter(defaultnextchainlink=move_metadata_cl)\
-        .update(defaultnextchainlink=policy_check_cl)
+        .update(defaultnextchainlink=prsrvtn_drvtv_policy_check_cl)
 
-    # Make "Policy checks" exit to "Move to metadata reminder"
+    # Make "Policy checks for access derivatives" exit to "Move to metadata
+    # reminder"
     for pk, exit_code, exit_message in (
             ('a9c2f8b8-e21f-4bf2-af22-e304c23b0143', 0,
              'Completed successfully'),
@@ -357,10 +387,25 @@ def data_migration(apps, schema_editor):
              'Failed')):
         MicroServiceChainLinkExitCode.objects.create(
             id=pk,
-            microservicechainlink=policy_check_cl,
+            microservicechainlink=ccss_drvtv_policy_check_cl,
             exitcode=exit_code,
             exitmessage=exit_message,
             nextmicroservicechainlink=move_metadata_cl
+        )
+
+    # Make "Policy checks for preservation derivatives" exit to "Policy checks
+    # for access derivatives"
+    for pk, exit_code, exit_message in (
+            ('088ef391-3c7c-4dff-be9b-34af19f3d38b', 0,
+             'Completed successfully'),
+            ('150d2b36-6262-4c7b-9dbc-5b0606dd5a48', 1,
+             'Failed')):
+        MicroServiceChainLinkExitCode.objects.create(
+            id=pk,
+            microservicechainlink=prsrvtn_drvtv_policy_check_cl,
+            exitcode=exit_code,
+            exitmessage=exit_message,
+            nextmicroservicechainlink=ccss_drvtv_policy_check_cl
         )
 
     ###########################################################################
@@ -373,7 +418,8 @@ def data_migration(apps, schema_editor):
     mediaconch_policy_check_command = FPCommand.objects.create(
         uuid=mediaconch_policy_check_command_uuid,
         tool=mediaconch_tool,
-        description='Check against policy using MediaConch',
+        description=('Check against policy NYULibraries_MKVFFV1-MODIFIED using'
+                     ' MediaConch'),
         command=mediaconch_policy_check_command_script,
         script_type='pythonScript',
         command_usage='validation'
@@ -386,7 +432,7 @@ def data_migration(apps, schema_editor):
     policy_check_preservation_rule_pk = 'aaaf34ef-c00f-4bb9-85c1-01c0ad5f3a8c'
     FPRule.objects.create(
         uuid=policy_check_preservation_rule_pk,
-        purpose='checkingPreservationPolicy',
+        purpose='checkingPreservationDerivativePolicy',
         command=mediaconch_policy_check_command,
         format=mkv_format
     )
