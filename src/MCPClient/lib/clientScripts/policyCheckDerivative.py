@@ -1,8 +1,8 @@
 #!/usr/bin/env python2
 from __future__ import print_function
-
+import sys
+from custom_handlers import get_script_logger
 from main.models import Derivation
-
 from policyCheck import PolicyChecker
 
 
@@ -43,4 +43,3 @@ if __name__ == '__main__':
     policy_checker = DerivativePolicyChecker(file_path, file_uuid, sip_uuid,
                                              policies_dir)
     sys.exit(policy_checker.check())
-

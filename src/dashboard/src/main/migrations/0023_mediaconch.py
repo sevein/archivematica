@@ -432,7 +432,7 @@ def data_migration(apps, schema_editor):
     policy_check_preservation_rule_pk = 'aaaf34ef-c00f-4bb9-85c1-01c0ad5f3a8c'
     FPRule.objects.create(
         uuid=policy_check_preservation_rule_pk,
-        purpose='checkingPreservationDerivativePolicy',
+        purpose='checkingPresDerivativePolicy',
         command=mediaconch_policy_check_command,
         format=mkv_format
     )

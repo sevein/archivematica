@@ -47,6 +47,8 @@ class PolicyChecker:
             print('Not performing a policy check because there is no file with'
                   ' UUID {}.'.format(self.file_uuid))
             return NOT_APPLICABLE_CODE
+        if not self.we_check_this_type_of_file():
+            return NOT_APPLICABLE_CODE
         rules = self._get_rules()
         if not rules:
             print('Not performing a policy check because there are no relevant'
@@ -68,17 +70,9 @@ class PolicyChecker:
             return True
         return False
 
-    preservation_purpose = 'checkingPreservationPolicy'
-    access_purpose = 'checkingAccessPolicy'
-
-    def set_purpose(self):
-        if self.is_for_access():
-            self.purpose = self.access_purpose
-        else:
-            self.purpose = self.preservation_purpose
+    purpose = 'checkingPolicy'
 
     def _get_rules(self):
-        self.set_purpose()
         try:
             fmt = FormatVersion.active.get(
                 fileformatversion__file_uuid=self.file_uuid)
@@ -115,7 +109,8 @@ class PolicyChecker:
                         ' version="{tool.version}"'.format(
                             tool=rule.command.tool))
         mc_pc_dscr = 'Check against policy using MediaConch'
-        if (rule.command.description == mc_pc_dscr and
+        if ('Check against policy' in rule.command.description and
+                'MediaConch' in rule.command.description and
                 output.get('eventOutcomeInformation') != 'pass'):
             print('Command {descr} returned a non-pass outcome for the policy'
                   ' check;\n\noutcome: {outcome}\n\ndetails: {details}.'

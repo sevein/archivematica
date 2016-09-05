@@ -1,14 +1,14 @@
 #!/usr/bin/env python2
 from __future__ import print_function
-
-from main.models import Derivation
+import sys
+from custom_handlers import get_script_logger
 
 from policyCheckDerivative import DerivativePolicyChecker
 
 
 class AccessDerivativePolicyChecker(DerivativePolicyChecker):
 
-    access_purpose = 'checkingAccessDerivativePolicy'
+    purpose = 'checkingAccessDerivativePolicy'
 
     def we_check_this_type_of_file(self):
         if (not self.is_derivative()) or (not self.is_for_access()):

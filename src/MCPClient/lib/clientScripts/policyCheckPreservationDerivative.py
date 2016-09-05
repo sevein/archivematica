@@ -1,19 +1,19 @@
 #!/usr/bin/env python2
 from __future__ import print_function
-
-from main.models import Derivation
+import sys
+from custom_handlers import get_script_logger
 
 from policyCheckDerivative import DerivativePolicyChecker
 
 
 class PreservationDerivativePolicyChecker(DerivativePolicyChecker):
 
-    preservation_purpose = 'checkingPreservationDerivativePolicy'
+    purpose = 'checkingPresDerivativePolicy'
 
     def we_check_this_type_of_file(self):
         if (not self.is_derivative()) or self.is_for_access():
-            print('File {uuid} is not a preservation derivative; not performing'
-                  ' a policy check.'.format(uuid=self.file_uuid))
+            print('File {uuid} is not a preservation derivative; not'
+                  ' performing a policy check.'.format(uuid=self.file_uuid))
             return False
         return True
 
