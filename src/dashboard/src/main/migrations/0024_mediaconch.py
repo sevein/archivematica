@@ -441,7 +441,7 @@ def data_migration(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('main', '0021_email_report_args'),
+        ('main', '0023_normalization_report'),
     ]
 
     operations = [
