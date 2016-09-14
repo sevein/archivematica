@@ -582,12 +582,13 @@ def get_event_outcome_information_detail(impl_checks):
                 'The implementation check %s returned'
                 ' success for the following check(s): %s.' % (
                     impl_check, ', '.join(passed_checks)))
+    prefix = 'MediaConch implementation check result:'
     if info == 'pass':
         if passed_impl_checks:
             return info, ' '.join(passed_impl_checks)
-        return info, 'All checks passed.'
+        return (info, '{} All checks passed.'.format(prefix))
     else:
-        return info, ' '.join(failed_impl_checks)
+        return (info, '{} {}'.format(prefix, ' '.join(failed_impl_checks)))
 
 
 def main(target):
