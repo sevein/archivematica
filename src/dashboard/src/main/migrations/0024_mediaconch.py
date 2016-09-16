@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-from __future__ import unicode_literals
+from __future__ import print_function, unicode_literals
 from django.db import migrations
 
 
@@ -189,7 +189,7 @@ def data_migration(apps, schema_editor):
         id=vldt_prsrvtn_drvtv_cl_pk,
         currenttask=vldt_prsrvtn_drvtv_tc,
         defaultnextchainlink=nrmlz_prsrvtn_next_link,
-        microservicegroup=u'Normalize'
+        microservicegroup='Normalize'
     )
 
     # Fix default next links for "Normalize for Preservation" links
@@ -247,7 +247,7 @@ def data_migration(apps, schema_editor):
         id=vldt_ccss_drvtv_cl_1_pk,
         currenttask=vldt_ccss_drvtv_tc,
         defaultnextchainlink=nrmlz_ccss_1_next_link,
-        microservicegroup=u'Normalize'
+        microservicegroup='Normalize'
     )
 
     # Validate Access Derivatives Chain Link # 2.
@@ -256,7 +256,7 @@ def data_migration(apps, schema_editor):
         id=vldt_ccss_drvtv_cl_2_pk,
         currenttask=vldt_ccss_drvtv_tc,
         defaultnextchainlink=nrmlz_ccss_2_next_link,
-        microservicegroup=u'Normalize'
+        microservicegroup='Normalize'
     )
 
     # Fix default next links for "Normalize for Access" links
@@ -355,7 +355,7 @@ def data_migration(apps, schema_editor):
         id=ccss_drvtv_policy_check_cl_pk,
         currenttask=ccss_drvtv_policy_check_tc,
         defaultnextchainlink=move_metadata_cl,
-        microservicegroup=u'Policy checks for derivatives'
+        microservicegroup='Policy checks for derivatives'
     )
 
     # "Policy checks for preservation derivatives" chain link.
@@ -366,7 +366,7 @@ def data_migration(apps, schema_editor):
         id=prsrvtn_drvtv_policy_check_cl_pk,
         currenttask=prsrvtn_drvtv_policy_check_tc,
         defaultnextchainlink=ccss_drvtv_policy_check_cl,
-        microservicegroup=u'Policy checks for derivatives'
+        microservicegroup='Policy checks for derivatives'
     )
 
     # Configure any links that exit to "Move to metadata reminder" to now exit
@@ -449,7 +449,7 @@ class Migration(migrations.Migration):
     ]
 
 mediaconch_command_script = '''
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 import json
 import subprocess
 import sys
@@ -621,7 +621,7 @@ if __name__ == '__main__':
 
 
 mediaconch_policy_check_command_script = '''
-from __future__ import print_function
+from __future__ import print_function, unicode_literals
 import json
 import os
 import subprocess
@@ -732,20 +732,23 @@ class MediaConchPolicyCheckerCommand:
                 passed_policy_checks.append(name)
             else:
                 failed_policy_checks.append(
-                    u'The check "{name}" failed; the actual value for the'
-                    u' field "{fie}" was "{act}"; the reason was'
-                    u' "{rea}".'.format(
+                    'The check "{name}" failed; the actual value for the'
+                    ' field "{fie}" was "{act}"; the reason was'
+                    ' "{rea}".'.format(
                         name=name,
                         fie=fie,
                         act=act,
                         rea=rea))
+        prefix = 'MediaConch policy check result:'
         if failed_policy_checks:
-            return 'fail', u' '.join(failed_policy_checks)
+            return ('fail', '{} {}'.format(
+                    prefix, ' '.join(failed_policy_checks)))
         elif not passed_policy_checks:
-            return 'pass', u'No checks passed, but none failed either.'
+            return ('pass', '{} No checks passed, but none failed'
+                    ' either.'.format(prefix))
         else:
-            return 'pass', u'All policy checks passed: %s' % (
-                '; '.join(passed_policy_checks))
+            return ('pass', '{} All policy checks passed: {}'.format(prefix,
+                    '; '.join(passed_policy_checks)))
 
     def check(self, target):
         """Return 0 if MediaConch can successfully assess whether the file at
