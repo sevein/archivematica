@@ -36,6 +36,12 @@ from components import helpers
 from archivematicaFunctions import escape
 
 
+@cache_page(86400, key_prefix='js18n-%s' % get_language())
+@last_modified(lambda req, **kw: timezone.now())
+def cached_javascript_catalog(request, domain='djangojs', packages=None):
+    return javascript_catalog(request, domain, packages)
+
+
 """ @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@
       Home
     @@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@ """
