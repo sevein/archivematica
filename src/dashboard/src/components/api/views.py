@@ -70,7 +70,7 @@ def get_unit_status(unit_uuid, unit_type):
     'microservice', and may include 'sip_uuid'.
 
     Status is one of FAILED, REJECTED, USER_INPUT, COMPLETE or PROCESSING.
-    Microservice is the name of the current microservice.
+    Microservice is the name of the most recent microservice.
     SIP UUID is populated only if the unit_type was unitTransfer and status is
     COMPLETE.  Otherwise, it is None.
 
@@ -79,27 +79,27 @@ def get_unit_status(unit_uuid, unit_type):
     :return: Dict with status info.
     """
     ret = {}
-    job = models.Job.objects.filter(sipuuid=unit_uuid).filter(unittype=unit_type).order_by('-createdtime', '-createdtimedec')[0]
-    ret['microservice'] = job.jobtype
-    if job.currentstep == 'Awaiting decision':
+    joblist = models.Job.objects.filter(sipuuid=unit_uuid).filter(unittype=unit_type)
+    if joblist.filter(currentstep ='Awaiting decision').exists():
         ret['status'] = 'USER_INPUT'
-    elif 'failed' in job.microservicegroup.lower():
+    elif joblist.filter(microservicegroup__icontains='failed').exists():
         ret['status'] = 'FAILED'
-    elif 'reject' in job.microservicegroup.lower():
+    elif joblist.filter(microservicegroup__icontains='reject').exists():
         ret['status'] = 'REJECTED'
-    elif job.jobtype == 'Remove the processing directory':  # Done storing AIP
+    elif joblist.filter(jobtype='Remove the processing directory').exists():  # Done storing AIP
         ret['status'] = 'COMPLETE'
-    elif models.Job.objects.filter(sipuuid=unit_uuid).filter(jobtype='Create SIP from transfer objects').exists():
+    elif joblist.filter(jobtype='Create SIP from transfer objects').exists():
         ret['status'] = 'COMPLETE'
         # Get SIP UUID
         sips = models.File.objects.filter(transfer_id=unit_uuid, sip__isnull=False).values('sip').distinct()
         if sips:
             ret['sip_uuid'] = sips[0]['sip']
-    elif models.Job.objects.filter(sipuuid=unit_uuid).filter(jobtype='Move transfer to backlog').exists():
+    elif joblist.filter(jobtype='Move transfer to backlog').exists():
         ret['status'] = 'COMPLETE'
         ret['sip_uuid'] = 'BACKLOG'
     else:
         ret['status'] = 'PROCESSING'
+    ret['microservice'] = joblist.order_by('-createdtime', '-createdtimedec')[0].jobtype
 
     return ret
 

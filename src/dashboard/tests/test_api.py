@@ -101,3 +101,14 @@ class TestAPI(TestCase):
         assert len(status) == 2
         assert 'microservice' in status
         assert status['status'] == 'COMPLETE'
+
+    def test_get_unit_status_bad_ordering(self):
+        """It should return USER_INPUT."""
+        # Setup fixtures
+        load_fixture(['job-processing.json', 'jobs-bad-ordering.json'])
+        # Test
+        status = views.get_unit_status('3e1e56ed-923b-4b53-84fe-c5c1c0b0cf8e', 'unitTransfer')
+        # Verify
+        assert len(status) == 2
+        assert 'microservice' in status
+        assert status['status'] == 'USER_INPUT'
