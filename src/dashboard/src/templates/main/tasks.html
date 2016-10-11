@@ -1,4 +1,5 @@
 {% extends "layout_fluid.html" %}
+{% load i18n %}
 {% load l10n %}
 
 {% block content %}
@@ -11,21 +12,55 @@
       {% for item in objects %}
         <tr class="{% cycle 'odd' 'even' %}{% ifnotequal item.exitcode 0 %} exiterror{% endifnotequal %}">
           <td>
-            <span>Task UUID:</span> {{ item.taskuuid }}<br />
-            <span>File UUID:</span> {{ item.fileuuid }}<br />
-            <span>File name:</span> {{ item.filename }}<br />
-            <span>Client:</span> {{ item.client }}<br />
+            {% blockquote with uuid=item.taskuuid %}
+              <span>Task UUID:</span> {{ uuid }}
+            {% endblockquote %}
+            <br />
+
+            {% blockquote with uuid=item.fileuuid %}
+              <span>File UUID:</span> {{ uuid }}
+            {% endblockquote %}
+            <br />
+
+            {% blockquote with filename=item.filename %}
+              <span>File name:</span> {{ filename }}
+            {% endblockquote %}
+            <br />
+
+            {% blockquote with client=item.client %}
+              <span>Client:</span> {{ client }}
+            {% endblockquote %}
+            <br />
+
             <span>&nbsp;</span> {{ item.exec_field }} (exit code: {{ item.exitcode }})
           </td>
           <td>
-            <span>Start time:</span> <span class='datetime'>{{ item.starttime.isoformat }}</span><br />
-            <span>End time:</span> <span class='datetime'>{{ item.endtime.isoformat }}</span><br />
-            <span>Created time:</span> <span class='datetime'>{{ item.createdtime.isoformat }}</span><br />
-            <span>Duration:</span> {{ item.duration }} second(s)
+            {% blockquote with datetime=item.starttime.isoformat %}
+              <span>Start time:</span> <span class="datetime">{{ datetime }}</span>
+            {% endblockquote %}
+            <br />
+
+            {% blockquote with datetime=item.endtime.isoformat %}
+              <span>End time:</span> <span class="datetime">{{ datetime }}</span>
+            {% endblockquote %}
+            <br />
+
+            {% blockquote with datetime=item.createdtime.isoformat %}
+              <span>Created time:</span> <span class="datetime">{{ datetime }}</span>
+            {% endblockquote %}
+            <br />
+
+            {% blockquote with duration=item.duration %}
+              <span>Duration:</span> {{ duration }} seconds(s)
+            {% endblockquote %}
           </td>
         </tr>
         <tr>
-          <td colspan="2">Command: {{ item.execution }} {{ item.arguments }}</td>
+          <td colspan="2">
+            {% blockquote with execution=item.execution arguments=item.arguments %}
+              Command: {{ execution }} {{ arguments }}
+            {% endblockquote %}
+          </td>
         </tr>
         {% if item.stdout %}
           <tr>

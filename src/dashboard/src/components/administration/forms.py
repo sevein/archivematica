@@ -23,8 +23,8 @@ from collections import OrderedDict
 from django import forms
 from django.conf import settings
 from django.db import connection
-from django.utils.translation import ugettext as _
 from django.forms.widgets import TextInput, RadioSelect, CheckboxInput, Select
+from django.utils.translation import ugettext as _
 
 from components import helpers
 from main import models
@@ -83,17 +83,24 @@ class StorageSettingsForm(SettingsForm):
             return super(forms.CharField, self).to_python(value).strip()
 
     storage_service_url = forms.URLField(
-        label="Storage Service URL",
-        help_text='Full URL of the storage service. E.g. https://192.168.168.192:8000'
+        label=_("Storage Service URL"),
+        help_text=_('Full URL of the storage service. E.g. https://192.168.168.192:8000')
     )
     storage_service_user = forms.CharField(
-        label='Storage Service User',
-        help_text='User in the storage service to authenticate as. E.g. test'
+        label=_('Storage Service User'),
+        help_text=_('User in the storage service to authenticate as. E.g. test')
     )
     storage_service_apikey = StripCharField(
-        label='API key',
-        help_text='API key of the storage service user. E.g. 45f7684483044809b2de045ba59dc876b11b9810'
+        label=_('API key'),
+        help_text=_('API key of the storage service user. E.g. 45f7684483044809b2de045ba59dc876b11b9810')
     )
+    storage_service_use_default_config = forms.BooleanField(
+        required=False,
+        initial=True,
+        label=_('Use default configuration'),
+        help_text=_("You have to manually set up a custom configuration if the default configuration is not selected.")
+    )
+
 
 class ChecksumSettingsForm(SettingsForm):
     CHOICES = (
@@ -102,7 +109,7 @@ class ChecksumSettingsForm(SettingsForm):
         ('sha256', 'SHA-256'),
         ('sha512', 'SHA-512')
     )
-    checksum_type = forms.ChoiceField(choices=CHOICES, label='Select algorithm')
+    checksum_type = forms.ChoiceField(choices=CHOICES, label=_('Select algorithm'))
 
 
 class ArchivistsToolkitConfigForm(forms.ModelForm):
@@ -149,30 +156,14 @@ class ArchivesSpaceConfigForm(forms.ModelForm):
 
 
 class AtomDipUploadSettingsForm(SettingsForm):
-    dip_upload_atom_url = forms.CharField(required=True,
-        label="Upload URL",
-        help_text="URL where the Qubit index.php frontend lives, SWORD services path will be appended.")
-    dip_upload_atom_email = forms.CharField(required=True,
-        label="Login email",
-        help_text="E-mail account used to log into Qubit.")
-    dip_upload_atom_password = forms.CharField(required=True,
-        label="Login password",
-        help_text="E-mail account used to log into Qubit.")
-    dip_upload_atom_version = forms.ChoiceField(label="AtoM version",
-        choices=((1, 'Atom 1.x'), (2, 'Atom 2.x')))
-    dip_upload_atom_rsync_target = forms.CharField(required=False,
-        label="Rsync target",
-        help_text="The DIP can be sent with Rsync to a remote host before is deposited in Qubit. This is the destination value passed to Rsync (see man 1 rsync). For example: foobar.com:~/dips/.")
-    dip_upload_atom_rsync_command = forms.CharField(required=False,
-        label="Rsync command",
-        help_text="If --rsync-target is used, you can use this argument to specify the remote shell manually. For example: ssh -p 22222 -l user.")
-    dip_upload_atom_debug = forms.ChoiceField(required=False,
-        label="Debug mode",
-        help_text="Show additional details.",
-        choices=((False, 'No'), (True, 'Yes')))
-    dip_upload_atom_key = forms.CharField(required=False,
-        label="REST API key",
-        help_text="Used in metadata-only DIP upload.")
+    dip_upload_atom_url = forms.CharField(required=True, label=_("Upload URL"), help_text=_("URL where the Qubit index.php frontend lives, SWORD services path will be appended."))
+    dip_upload_atom_email = forms.CharField(required=True, label=_("Login email"), help_text=_("E-mail account used to log into Qubit."))
+    dip_upload_atom_password = forms.CharField(required=True, label=_("Login password"), help_text=_("E-mail account used to log into Qubit."))
+    dip_upload_atom_version = forms.ChoiceField(label=_("AtoM version"), choices=((1, 'Atom 1.x'), (2, 'Atom 2.x')))
+    dip_upload_atom_rsync_target = forms.CharField(required=False, label=_("Rsync target"), help_text=_("The DIP can be sent with Rsync to a remote host before is deposited in Qubit. This is the destination value passed to Rsync (see man 1 rsync). For example: foobar.com:~/dips/."))
+    dip_upload_atom_rsync_command = forms.CharField(required=False, label=_("Rsync command"), help_text=_("If --rsync-target is used, you can use this argument to specify the remote shell manually. For example: ssh -p 22222 -l user."))
+    dip_upload_atom_debug = forms.ChoiceField(required=False, label=_("Debug mode"), help_text=_("Show additional details."), choices=((False, _('No'), (True, _('Yes')))))
+    dip_upload_atom_key = forms.CharField(required=False, label=_("REST API key"), help_text=_("Used in metadata-only DIP upload."))
 
 
 class TaxonomyTermForm(forms.ModelForm):

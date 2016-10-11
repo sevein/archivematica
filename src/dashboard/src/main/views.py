@@ -22,6 +22,12 @@ from django.conf import settings as django_settings
 from django.core.urlresolvers import reverse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.http import Http404, HttpResponse
+from django.utils import timezone
+from django.utils.translation import get_language
+from django.utils.translation import ugettext as _
+from django.views.decorators.cache import cache_page
+from django.views.decorators.http import last_modified
+from django.views.i18n import javascript_catalog
 
 from contrib.mcp.client import MCPClient
 from main import models
@@ -217,7 +223,7 @@ def jobs_explore(request, uuid):
     # Check if it is or not the root dir to add the "Go parent" link
     if os.path.realpath(directory) != os.path.realpath(job.directory):
         parent = {}
-        parent['name'] = 'Go to parent directory...'
+        parent['name'] = _('Go to parent directory...')
         parent['type'] = 'parent'
         contents.append(parent)
     # Add contents of the directory
@@ -362,15 +368,15 @@ def formdata(request, type, parent_id, delete_id = None):
         if id == 0:
           response['new_id']  = instance.pk
 
-        response['message'] = 'Added.'
+        response['message'] = _('Added.')
 
     # handle deletion
     if (request.method == 'DELETE'):
         if (delete_id == None):
-            response['message'] = 'Error: no delete ID supplied.'
+            response['message'] = _('Error: no delete ID supplied.')
         else:
             model.objects.filter(pk=delete_id).delete()
-            response['message'] = 'Deleted.'
+            response['message'] = _('Deleted.')
 
     # send back revised data
     if (results != None):
@@ -385,6 +391,6 @@ def formdata(request, type, parent_id, delete_id = None):
             });
 
     if (model == None):
-        response['message'] = 'Incorrect type.'
+        response['message'] = _('Incorrect type.')
 
     return helpers.json_response(response)
