@@ -10,10 +10,15 @@ class DerivativePolicyChecker(PolicyChecker):
 
     purpose = 'checkingDerivativePolicy'
 
-    def is_derivative(self):
+    def is_derivative(self, for_access=False):
+        # Access derivatives have Derivation rows with NULL event types (cf.
+        # normalize.py client script).
+        event_type = 'normalization'
+        if for_access:
+            event_type = None
         try:
             Derivation.objects.get(derived_file__uuid=self.file_uuid,
-                                   event__event_type='normalization')
+                                   event__event_type=event_type)
             return True
         except Derivation.DoesNotExist:
             return False

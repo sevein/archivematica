@@ -11,11 +11,17 @@ class AccessDerivativePolicyChecker(DerivativePolicyChecker):
     purpose = 'checkingAccessDerivativePolicy'
 
     def we_check_this_type_of_file(self):
-        if (not self.is_derivative()) or (not self.is_for_access()):
-            print('File {uuid} is not an access derivative; not performing'
-                  ' a policy check.'.format(uuid=self.file_uuid))
-            return False
-        return True
+        if self.is_derivative(for_access=True) and self.is_for_access():
+            return True
+        print('File {uuid} is not an access derivative; not performing'
+                ' a policy check.'.format(uuid=self.file_uuid))
+        if not self.is_derivative(for_access=True):
+            print('File {uuid} is not a derivative.'.format(
+                uuid=self.file_uuid))
+        if not self.is_for_access():
+            print('File {uuid} is not for access.'.format(
+                uuid=self.file_uuid))
+        return False
 
 if __name__ == '__main__':
     logger = get_script_logger(
