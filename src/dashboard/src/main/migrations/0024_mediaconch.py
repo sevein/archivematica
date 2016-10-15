@@ -418,8 +418,8 @@ def data_migration(apps, schema_editor):
     mediaconch_policy_check_command = FPCommand.objects.create(
         uuid=mediaconch_policy_check_command_uuid,
         tool=mediaconch_tool,
-        description=('Check against policy NYULibraries_MKVFFV1-MODIFIED using'
-                     ' MediaConch'),
+        description=('Check against policy PLACEHOLDER_FOR_POLICY_FILE_NAME'
+                     ' using MediaConch'),
         command=mediaconch_policy_check_command_script,
         script_type='pythonScript',
         command_usage='validation'
@@ -780,8 +780,7 @@ if __name__ == '__main__':
     # To create new MediaConch-based policy checker FPR commands, just copy
     # this entire script and replace the single ``policy_filename`` var with
     # the name of a different policy file.
-    # policy_filename = 'CAVPP_Access_Video_Files.xsl'
-    policy_filename = 'NYULibraries_MKVFFV1-MODIFIED.xsl'
+    policy_filename = 'PLACEHOLDER_FOR_POLICY_FILE_NAME'
 
     target = sys.argv[1]
     policies_path = sys.argv[2]
