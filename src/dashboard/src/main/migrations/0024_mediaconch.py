@@ -422,7 +422,8 @@ def data_migration(apps, schema_editor):
                      ' using MediaConch'),
         command=mediaconch_policy_check_command_script,
         script_type='pythonScript',
-        command_usage='validation'
+        command_usage='validation',
+        enabled=False
     )
 
     # MediaConch-against-MKV-for-policyCheckingPreservationFile Rule.
