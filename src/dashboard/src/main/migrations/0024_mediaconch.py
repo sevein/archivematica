@@ -413,6 +413,8 @@ def data_migration(apps, schema_editor):
     ###########################################################################
 
     # MediaConch Command
+    # NOTE: this command is disabled by default because it references a
+    # dummy/non-existent policy file.
     mediaconch_policy_check_command_uuid = \
         '9ef290f7-5320-4d69-821a-3156fc184b4e'
     mediaconch_policy_check_command = FPCommand.objects.create(
@@ -430,12 +432,15 @@ def data_migration(apps, schema_editor):
     # Create the FPR rule that causes 'Check against policy using MediaConch'
     # command to be used on 'Generic MKV' files intended for preservation in
     # the "Policy check" micro-service.
+    # NOTE: this rule is disabled by default because it references a disabled
+    # command that, in turn, references a non-existent MediaConch policy file.
     policy_check_preservation_rule_pk = 'aaaf34ef-c00f-4bb9-85c1-01c0ad5f3a8c'
     FPRule.objects.create(
         uuid=policy_check_preservation_rule_pk,
         purpose='checkingPresDerivativePolicy',
         command=mediaconch_policy_check_command,
-        format=mkv_format
+        format=mkv_format,
+        enabled=False
     )
 
 
