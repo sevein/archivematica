@@ -37,7 +37,9 @@
 
     <li class="{% active request url_atk_dips %}"><a href="{{ url_atk_dips }}">Archivists Toolkit DIP upload</a></li>
 
+    {% if not hide_features.netx_dip_admin %}
     <li class="{% active request url_netx %}"><a href="{{ url_netx }}">NetX</a></li>
+    {% endif %}
 
     <li class="{% active request url_premis %}"><a href="{{ url_premis }}">PREMIS agent</a></li>
 

@@ -294,8 +294,9 @@ def file_is_an_archive(file):
 
 def feature_settings():
     return {
-        'atom_dip_admin':      'dashboard_administration_atom_dip_enabled',
-        'dspace':              'dashboard_administration_dspace_enabled'
+        'atom_dip_admin': 'dashboard_administration_atom_dip_enabled',
+        'dspace': 'dashboard_administration_dspace_enabled',
+        'netx_dip_admin': 'dashboard_administration_netx_dip_enabled',
     }
 
 def hidden_features():

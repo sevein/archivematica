@@ -562,6 +562,8 @@ def general(request):
     toggleableSettings = {
         'dashboard_administration_atom_dip_enabled':
             'Hide AtoM DIP upload link',
+        'dashboard_administration_netx_dip_enabled':
+            'Hide NetX DIP upload link',
         'dashboard_administration_dspace_enabled':
             'Hide DSpace transfer type',
     }
