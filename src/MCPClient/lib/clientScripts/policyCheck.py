@@ -87,10 +87,33 @@ class PolicyChecker:
 
     purpose = 'checkingPolicy'
 
+    def get_manually_normalized_access_derivative_file_uuid(self):
+        """If the file-to-be-policy-checked is a manually normalized access
+        derivative it will have no file UUID. We have to do some hacky stuff to
+        get the UUID of the original file that was format-identified, i.e., the
+        file that was in manualNormalization/access/
+        """
+        manually_normalized_file_name = os.path.basename(self.file_path)[37:]
+        manually_normalized_file_path = \
+            '%transferDirectory%objects/manualNormalization/access/{}'.format(
+                manually_normalized_file_name)
+        try:
+            return File.objects.get(
+                originallocation=manually_normalized_file_path,
+                sip_id=self.sip_uuid).uuid
+        except File.DoesNotExist:
+            return None
+        except File.MultipleObjectsReturned:
+            return None
+
     def _get_rules(self):
+        file_uuid = self.file_uuid
+        if self.is_manually_normalized_access_derivative:
+            file_uuid = \
+                self.get_manually_normalized_access_derivative_file_uuid()
         try:
             fmt = FormatVersion.active.get(
-                fileformatversion__file_uuid=self.file_uuid)
+                fileformatversion__file_uuid=file_uuid)
         except FormatVersion.DoesNotExist:
             rules = fmt = None
         if fmt:
@@ -136,14 +159,19 @@ class PolicyChecker:
             result = 'failed'
         print('Creating policy checking event for {} ({})'
               .format(self.file_path, self.file_uuid))
-        # TODO/QUESTION: should this be a 'validation'-type event?
-        databaseFunctions.insertIntoEvents(
-            fileUUID=self.file_uuid,
-            eventType='validation',  # From PREMIS controlled vocab.
-            eventDetail=event_detail,
-            eventOutcome=output.get('eventOutcomeInformation'),
-            eventOutcomeDetailNote=output.get('eventOutcomeDetailNote'),
-        )
+        # Manually-normalized access derivatives have no file UUID so we can't
+        # create a validation event for them. TODO/QUESTION: should we use the
+        # UUID that was assigned to the manually normalized derivative during
+        # transfer, i.e., the one that we retrieve in
+        # ``get_manually_normalized_access_derivative_file_uuid`` above?
+        if not self.is_manually_normalized_access_derivative:
+            databaseFunctions.insertIntoEvents(
+                fileUUID=self.file_uuid,
+                eventType='validation',  # From PREMIS controlled vocab.
+                eventDetail=event_detail,
+                eventOutcome=output.get('eventOutcomeInformation'),
+                eventOutcomeDetailNote=output.get('eventOutcomeDetailNote'),
+            )
         return result
 
     def _get_command_to_execute(self, rule):
