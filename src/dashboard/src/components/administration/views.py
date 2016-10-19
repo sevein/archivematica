@@ -507,13 +507,14 @@ def policies(request):
                     ' Please rename your policy prior to'
                     ' upload.'.format(filename))
             # Base-level validation: checking for XML content_type. Could be more advanced ...
-            elif file_.content_type != 'text/xml':
+            elif file_.content_type not in ('text/xml', 'application/xslt+xml'):
                 messages.error(request, 'Policy files must be .xsl files')
             else:
                 with open(file_path, 'w') as f:
                     f.write(file_.read())
                 messages.info(request, 'Added!')
-    policies = os.listdir(helpers.policies_path())
+    policies = [fn for fn in os.listdir(helpers.policies_path()) if not
+                fn.startswith('.')]
     return render(request, 'administration/policies.html', locals())
 
 def policy_delete_context(request, policy):
