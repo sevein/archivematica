@@ -11,6 +11,8 @@ class DerivativePolicyChecker(PolicyChecker):
     purpose = 'checkingDerivativePolicy'
 
     def is_derivative(self, for_access=False):
+        if self.is_manually_normalized_access_derivative:
+            return True
         # Access derivatives have Derivation rows with NULL event types (cf.
         # normalize.py client script).
         event_type = 'normalization'
@@ -22,14 +24,6 @@ class DerivativePolicyChecker(PolicyChecker):
             return True
         except Derivation.DoesNotExist:
             return False
-
-    def is_for_access(self):
-        """Returns ``True`` if the file with UUID ``self.file_uuid`` is "for"
-        access.
-        """
-        if self.file_model.filegrpuse == 'access':
-            return True
-        return False
 
     def we_check_this_type_of_file(self):
         if not self.is_derivative():

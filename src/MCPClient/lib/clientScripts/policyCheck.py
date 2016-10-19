@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 from __future__ import print_function
 import json
+import os
 import sys
 
 from custom_handlers import get_script_logger
@@ -39,14 +40,27 @@ class PolicyChecker:
         self.file_uuid = file_uuid
         self.sip_uuid = sip_uuid
         self.policies_dir = policies_dir
+        self.is_manually_normalized_access_derivative = \
+            self.get_is_manually_normalized_access_derivative()
+
+    def get_is_manually_normalized_access_derivative(self):
+        """Manually normalized access derivatives are never given UUIDs.
+        Therefore, we need this heuristic for determining if that is what we
+        are dealing with. TODO/QUESTION: will this return false positives?
+        """
+        if (self.file_uuid == 'None' and
+                os.path.split(self.file_path)[0].endswith('/DIP/objects')):
+            return True
+        return False
 
     def check(self):
-        try:
-            self.file_model = File.objects.get(uuid=self.file_uuid)
-        except File.DoesNotExist:
-            print('Not performing a policy check because there is no file with'
-                  ' UUID {}.'.format(self.file_uuid))
-            return NOT_APPLICABLE_CODE
+        if not self.is_manually_normalized_access_derivative:
+            try:
+                self.file_model = File.objects.get(uuid=self.file_uuid)
+            except File.DoesNotExist:
+                print('Not performing a policy check because there is no file'
+                      ' with UUID {}.'.format(self.file_uuid))
+                return NOT_APPLICABLE_CODE
         if not self.we_check_this_type_of_file():
             return NOT_APPLICABLE_CODE
         rules = self._get_rules()
@@ -66,7 +80,8 @@ class PolicyChecker:
         """Returns ``True`` if the file with UUID ``self.file_uuid`` is "for"
         access.
         """
-        if self.file_model.filegrpuse == 'access':
+        if (self.is_manually_normalized_access_derivative or
+                self.file_model.filegrpuse == 'access'):
             return True
         return False
 
@@ -108,7 +123,6 @@ class PolicyChecker:
         event_detail = ('program="{tool.description}";'
                         ' version="{tool.version}"'.format(
                             tool=rule.command.tool))
-        mc_pc_dscr = 'Check against policy using MediaConch'
         if ('Check against policy' in rule.command.description and
                 'MediaConch' in rule.command.description and
                 output.get('eventOutcomeInformation') != 'pass'):
