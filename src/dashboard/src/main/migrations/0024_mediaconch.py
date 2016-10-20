@@ -660,6 +660,7 @@ class MediaConchPolicyCheckerCommand:
     """
 
     def __init__(self, policies_path, policy_filename):
+        self.policy_filename = policy_filename
         self.policy_file_path = os.path.join(policies_path, policy_filename)
 
     def parse_mediaconch_output(self, target):
@@ -745,7 +746,8 @@ class MediaConchPolicyCheckerCommand:
                         fie=fie,
                         act=act,
                         rea=rea))
-        prefix = 'MediaConch policy check result:'
+        prefix = ('MediaConch policy check result against policy file'
+                  ' {}:'.format(self.policy_filename))
         if failed_policy_checks:
             return ('fail', '{} {}'.format(
                     prefix, ' '.join(failed_policy_checks)))
