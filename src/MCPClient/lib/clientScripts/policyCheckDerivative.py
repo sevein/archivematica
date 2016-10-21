@@ -38,7 +38,7 @@ if __name__ == '__main__':
     file_path = sys.argv[1]
     file_uuid = sys.argv[2]
     sip_uuid = sys.argv[3]
-    policies_dir = sys.argv[4]
+    shared_path = sys.argv[4]
     policy_checker = DerivativePolicyChecker(file_path, file_uuid, sip_uuid,
-                                             policies_dir)
+                                             shared_path)
     sys.exit(policy_checker.check())

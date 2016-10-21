@@ -23,7 +23,7 @@ if __name__ == '__main__':
     file_path = sys.argv[1]
     file_uuid = sys.argv[2]
     sip_uuid = sys.argv[3]
-    policies_dir = sys.argv[4]
+    shared_path = sys.argv[4]
     policy_checker = PreservationDerivativePolicyChecker(
-        file_path, file_uuid, sip_uuid, policies_dir)
+        file_path, file_uuid, sip_uuid, shared_path)
     sys.exit(policy_checker.check())

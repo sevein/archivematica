@@ -2,6 +2,7 @@
 from __future__ import print_function
 import json
 import os
+import shutil
 import sys
 
 from custom_handlers import get_script_logger
@@ -9,7 +10,7 @@ from custom_handlers import get_script_logger
 import django
 django.setup()
 from fpr.models import FPRule, FormatVersion
-from main.models import File
+from main.models import File, SIP
 
 from executeOrRunSubProcess import executeOrRun
 import databaseFunctions
@@ -23,25 +24,25 @@ FAIL_CODE = 1
 
 
 class PolicyChecker:
-    """Checks that files (originals or derivatives) conform to specific
-    policies.
-
-    - policies for access
-    - policies for preservation
-
-    Initialize on a file and then call the ``check`` method to determine
-    whether a given file conforms to the policies that are appropriate to it,
-    given its format and its purpose, i.e., whether it is intended for access
-    or preservation.
+    """Checks whether a given file conforms to all of the MediaConch policies
+    that the system is configured to run against that type of file, given the
+    file's format and its purpose, i.e., whether it is intended for access or
+    preservation. Usage involves initializing on a file and then calling the
+    ``check`` method.
     """
 
-    def __init__(self, file_path, file_uuid, sip_uuid, policies_dir):
+    def __init__(self, file_path, file_uuid, sip_uuid, shared_path):
         self.file_path = file_path
         self.file_uuid = file_uuid
         self.sip_uuid = sip_uuid
-        self.policies_dir = policies_dir
+        self.shared_path = shared_path
+        self.policies_dir = self.get_policies_dir()
         self.is_manually_normalized_access_derivative = \
             self.get_is_manually_normalized_access_derivative()
+
+    def get_policies_dir(self):
+        return os.path.join(self.shared_path, 'sharedMicroServiceTasksConfigs',
+                            'policies')
 
     def get_is_manually_normalized_access_derivative(self):
         """Manually normalized access derivatives are never given UUIDs.
@@ -54,6 +55,10 @@ class PolicyChecker:
         return False
 
     def check(self):
+        """Check the passed-in file against any policy-check FPR commands that
+        are applicable. If any fail, return a non-zero exit code; otherwise
+        return ``0``.
+        """
         if not self.is_manually_normalized_access_derivative:
             try:
                 self.file_model = File.objects.get(uuid=self.file_uuid)
@@ -89,9 +94,13 @@ class PolicyChecker:
 
     def get_manually_normalized_access_derivative_file_uuid(self):
         """If the file-to-be-policy-checked is a manually normalized access
-        derivative it will have no file UUID. We have to do some hacky stuff to
-        get the UUID of the original file that was format-identified, i.e., the
-        file that was in manualNormalization/access/
+        derivative it will have no file UUID in the database. We therefore have
+        to retrieve the UUID of the original file that was format-identified,
+        i.e., the file that was in manualNormalization/access/, which we do by
+        querying the database based on the original location of the file. This
+        file UUID is needed so that we can get the format (PRONOM id) in order
+        to retrieve the appropriate policy-check FPR rule for this type of file
+        (see ``self._get_rules()``).
         """
         manually_normalized_file_name = os.path.basename(self.file_path)[37:]
         manually_normalized_file_path = \
@@ -101,12 +110,13 @@ class PolicyChecker:
             return File.objects.get(
                 originallocation=manually_normalized_file_path,
                 sip_id=self.sip_uuid).uuid
-        except File.DoesNotExist:
-            return None
-        except File.MultipleObjectsReturned:
+        except (File.DoesNotExist, File.MultipleObjectsReturned):
             return None
 
     def _get_rules(self):
+        """Return the FPR rules with purpose ``self.purpose`` and that apply to
+        the type/format of file given as input.
+        """
         file_uuid = self.file_uuid
         if self.is_manually_normalized_access_derivative:
             file_uuid = \
@@ -118,19 +128,63 @@ class PolicyChecker:
             rules = fmt = None
         if fmt:
             rules = FPRule.active.filter(format=fmt.uuid, purpose=self.purpose)
-        # Check default rules.
+        # Check for default rules.
         if not rules:
             rules = FPRule.active.filter(
                 purpose='default_{}'.format(self.purpose))
         return rules
 
+    def save_policy_to_logs_dir(self, policy_filename):
+        """Save the policy file ``policy_filename`` to the logs/ directory of
+        the SIP, if it is not there already.
+        """
+        sip_logs_dir = self.get_sip_logs_dir()
+        if sip_logs_dir:
+            dst = os.path.join(sip_logs_dir, policy_filename)
+            if not os.path.isfile(dst):
+                src = os.path.join(self.policies_dir, policy_filename)
+                if not os.path.isfile(src):
+                    print('Warning: unable to find policy file at'
+                          ' {}'.format(src))
+                else:
+                    shutil.copyfile(src, dst)
+
+    def get_sip_logs_dir(self):
+        """Return the absolute path the the logs/ directory of the SIP that the
+        target file is a part of.
+        """
+        try:
+            sip_model = SIP.objects.get(uuid=self.sip_uuid)
+        except (SIP.DoesNotExist, SIP.MultipleObjectsReturned):
+            print('Warning: unable to retrieve SIP model corresponding to SIP'
+                  ' UUID {}'.format(self.sip_uuid), file=sys.stderr)
+            return None
+        else:
+            sip_path = sip_model.currentpath.replace(
+                '%sharedPath%', self.shared_path, 1)
+            logs_dir = os.path.join(sip_path, 'logs')
+            if os.path.isdir(logs_dir):
+                return logs_dir
+            print('Warning: unable to find a logs/ directory in the SIP'
+                  ' with UUID {}'.format(self.sip_uuid), file=sys.stderr)
+            return None
+
     def _execute_rule_command(self, rule):
+        """Execute the FPR command of FPR rule ``rule`` against the file passed
+        in to this client script. The output of that command determines what we
+        print to stdout and stderr, and the nature of the validation event that
+        we save to the db. We also copy the MediaConch policy file to the logs/
+        directory of the AIP if it has not already been copied there.
+        """
         result = 'passed'
         command_to_execute, args = self._get_command_to_execute(rule)
         print('Running', rule.command.description)
         exitstatus, stdout, stderr = executeOrRun(
             rule.command.script_type, command_to_execute, arguments=args,
             printing=False)
+        output = json.loads(stdout)
+        policy_filename = output.get('policy')
+        self.save_policy_to_logs_dir(policy_filename)
         if exitstatus == 0:
             print('Command {} completed with output {}'.format(
                   rule.command.description, stdout))
@@ -139,10 +193,6 @@ class PolicyChecker:
                   rule.command.description, exitstatus), stderr,
                   file=sys.stderr)
             return 'failed'
-        # Parse output and generate an Event
-        # TODO: can we assume that all policy check commands will print JSON to
-        # stdout?
-        output = json.loads(stdout)
         event_detail = ('program="{tool.description}";'
                         ' version="{tool.version}"'.format(
                             tool=rule.command.tool))
@@ -175,6 +225,9 @@ class PolicyChecker:
         return result
 
     def _get_command_to_execute(self, rule):
+        """Return a 2-tuple consisting of a) the FPR rule ``rule``'s command
+        and b) a list of arguments to pass to it.
+        """
         if rule.command.script_type in ('bashScript', 'command'):
             return (replace_string_values(rule.command.command,
                                           file_=self.file_uuid,
@@ -189,7 +242,7 @@ if __name__ == '__main__':
     file_path = sys.argv[1]
     file_uuid = sys.argv[2]
     sip_uuid = sys.argv[3]
-    policies_dir = sys.argv[4]
+    shared_path = sys.argv[4]
     policy_checker = PolicyChecker(file_path, file_uuid, sip_uuid,
-                                   policies_dir)
+                                   shared_path)
     sys.exit(policy_checker.check())

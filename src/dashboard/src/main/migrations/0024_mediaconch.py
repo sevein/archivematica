@@ -316,7 +316,7 @@ def data_migration(apps, schema_editor):
         id=prsrvtn_drvtv_policy_check_stc_pk,
         execute='policyCheckPreservationDerivative_v0.0',
         arguments=('"%relativeLocation%" "%fileUUID%" "%SIPUUID%"'
-                   ' "%sharedPath%/sharedMicroServiceTasksConfigs/policies/"')
+                   ' "%sharedPath%"')
     )
 
     # Access Derivative Policy Check Standard Task Config.
@@ -325,7 +325,7 @@ def data_migration(apps, schema_editor):
         id=ccss_drvtv_policy_check_stc_pk,
         execute='policyCheckAccessDerivative_v0.0',
         arguments=('"%relativeLocation%" "%fileUUID%" "%SIPUUID%"'
-                   ' "%sharedPath%/sharedMicroServiceTasksConfigs/policies/"')
+                   ' "%sharedPath%"')
     )
 
     # Preservation Derivative Policy Check Task Config.
@@ -770,13 +770,15 @@ class MediaConchPolicyCheckerCommand:
                 policy_checks)
             print(json.dumps({
                 'eventOutcomeInformation': info,
-                'eventOutcomeDetailNote': detail
+                'eventOutcomeDetailNote': detail,
+                'policy': self.policy_filename
             }))
             return SUCCESS_CODE
         except MediaConchException as e:
             print(json.dumps({
                 'eventOutcomeInformation': 'fail',
-                'eventOutcomeDetailNote': str(e)
+                'eventOutcomeDetailNote': str(e),
+                'policy': self.policy_filename
             }), file=sys.stderr)
             return ERROR_CODE
 
