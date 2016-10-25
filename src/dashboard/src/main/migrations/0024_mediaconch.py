@@ -679,7 +679,7 @@ class MediaConchPolicyCheckerCommand:
             raise MediaConchException("MediaConch failed when running: %s" % (
                 ' '.join(args),))
         try:
-            return etree.fromstring(output)
+            return etree.fromstring(output), output
         except etree.XMLSyntaxError:
             raise MediaConchException(
                 "The MediaConch command failed when attempting to parse the"
@@ -760,25 +760,28 @@ class MediaConchPolicyCheckerCommand:
 
     def check(self, target):
         """Return 0 if MediaConch can successfully assess whether the file at
-        `target` is a valid Matroska (.mkv) file. Parse the XML output by
-        MediaConch and print a JSON representation of that output.
+        `target` passes the policy checks that are relevant to it, given its
+        purpose and the state of the FPR. Parse the XML output by MediaConch
+        and print a JSON representation of that output.
         """
         try:
-            doc = self.parse_mediaconch_output(target)
+            doc, mc_stdout = self.parse_mediaconch_output(target)
             policy_checks = self.get_policy_checks(doc)
             info, detail = self.get_event_outcome_information_detail(
                 policy_checks)
             print(json.dumps({
                 'eventOutcomeInformation': info,
                 'eventOutcomeDetailNote': detail,
-                'policy': self.policy_filename
+                'policy': self.policy_filename,
+                'stdout': mc_stdout
             }))
             return SUCCESS_CODE
         except MediaConchException as e:
             print(json.dumps({
                 'eventOutcomeInformation': 'fail',
                 'eventOutcomeDetailNote': str(e),
-                'policy': self.policy_filename
+                'policy': self.policy_filename,
+                'stdout': None
             }), file=sys.stderr)
             return ERROR_CODE
 
