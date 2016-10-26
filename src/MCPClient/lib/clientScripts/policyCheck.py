@@ -151,8 +151,7 @@ class PolicyChecker:
         mc_stdout = output.get('stdout')
         if policy_filename and mc_stdout and self.sip_policies_dir:
             purpose_dir = {
-                'checkingPresDerivativePolicy': 'preservationDerivatives',
-                'checkingAccessDerivativePolicy': 'accessDerivatives'
+                'checkingPresDerivativePolicy': 'preservationDerivatives'
             }.get(self.purpose, 'originals')
             purpose_path = os.path.join(self.sip_policies_dir, purpose_dir)
             if not os.path.isdir(purpose_path):
@@ -236,7 +235,9 @@ class PolicyChecker:
             rule.command.script_type, command_to_execute, arguments=args,
             printing=False)
         output = json.loads(stdout)
-        self.save_to_logs_dir(output)
+        # TODO: will add originals-checking to this tuple in future
+        if self.purpose in ('checkingPresDerivativePolicy',)
+            self.save_to_logs_dir(output)
         if exitstatus == 0:
             print('Command {} completed with output {}'.format(
                   rule.command.description, stdout))
