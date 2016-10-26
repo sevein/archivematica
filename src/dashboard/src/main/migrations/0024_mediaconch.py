@@ -71,9 +71,11 @@ def data_migration(apps, schema_editor):
     TaskType = apps.get_model('main', 'TaskType')
     TaskConfig = apps.get_model('main', 'TaskConfig')
     StandardTaskConfig = apps.get_model('main', 'StandardTaskConfig')
+    MicroServiceChain = apps.get_model('main', 'MicroServiceChain')
     MicroServiceChainLink = apps.get_model('main', 'MicroServiceChainLink')
     MicroServiceChainLinkExitCode = apps.get_model(
         'main', 'MicroServiceChainLinkExitCode')
+    MicroServiceChainChoice = apps.get_model('main', 'MicroServiceChainChoice')
 
     ###########################################################################
     # Get Existing Model Instances
@@ -81,6 +83,8 @@ def data_migration(apps, schema_editor):
 
     mkv_format = FormatVersion.objects.get(description='Generic MKV')
     for_each_file_type = TaskType.objects.get(description='for each file')
+    user_choice_type = TaskType.objects.get(
+        description='get user choice to proceed with')
 
     # There are two chain links with the task config description 'Normalize for
     # preservation'. However, all of them exit to the same next chain link.
@@ -310,6 +314,8 @@ def data_migration(apps, schema_editor):
     # Policy Check for Derivative CHAIN LINKs, etc.
     ###########################################################################
 
+
+
     # Preservation Derivative Policy Check Standard Task Config.
     prsrvtn_drvtv_policy_check_stc_pk = '0dc703b8-780a-4643-a427-bb60bd5879a8'
     StandardTaskConfig.objects.create(
@@ -369,15 +375,6 @@ def data_migration(apps, schema_editor):
         microservicegroup='Policy checks for derivatives'
     )
 
-    # Configure any links that exit to "Move to metadata reminder" to now exit
-    # to "Policy checks for preservation derivatives".
-    MicroServiceChainLinkExitCode.objects\
-        .filter(nextmicroservicechainlink=move_metadata_cl)\
-        .update(nextmicroservicechainlink=prsrvtn_drvtv_policy_check_cl)
-    MicroServiceChainLink.objects\
-        .filter(defaultnextchainlink=move_metadata_cl)\
-        .update(defaultnextchainlink=prsrvtn_drvtv_policy_check_cl)
-
     # Make "Policy checks for access derivatives" exit to "Move to metadata
     # reminder"
     for pk, exit_code, exit_message in (
@@ -407,6 +404,73 @@ def data_migration(apps, schema_editor):
             exitmessage=exit_message,
             nextmicroservicechainlink=ccss_drvtv_policy_check_cl
         )
+
+
+
+    # Micro-service that asks "Do you want to do policy checks on preservation
+    # derivatives?"
+
+    # Preservation Derivative Policy Check CHOICE POINT Task Config
+    prsrvtn_drvtv_plcy_chck_choice_tc_pk = 'a4aad773-480a-422a-8e61-124fc7487572'
+    prsrvtn_drvtv_plcy_chck_choice_tc = TaskConfig.objects.create(
+        id=prsrvtn_drvtv_plcy_chck_choice_tc_pk,
+        tasktype=user_choice_type,
+        tasktypepkreference=None,
+        description='Perform policy checks on preservation derivatives?'
+    )
+
+    # "Perform policy checks on preservation derivatives?" CHOICE chain link.
+    prsrvtn_drvtv_policy_check_choice_cl_pk = '153c5f41-3cfb-47ba-9150-2dd44ebc27df'
+    prsrvtn_drvtv_policy_check_choice_cl = MicroServiceChainLink.objects.create(
+        id=prsrvtn_drvtv_policy_check_choice_cl_pk,
+        currenttask=prsrvtn_drvtv_plcy_chck_choice_tc,
+        defaultnextchainlink=None,
+        microservicegroup='Policy checks for derivatives'
+    )
+
+    # MS Chain Choice and Chain that say "Yes, I do want to do policy checks on
+    # preservation derivatives"
+    chain_yes_prsrvtn_drvtv_plcy_chck_mscc_pk = '3a55f688-eca3-4ebc-a012-4ce68290e7b0'
+    chain_yes_prsrvtn_drvtv_plcy_chck_mscc = MicroServiceChain.objects.create(
+        id=chain_yes_prsrvtn_drvtv_plcy_chck_mscc_pk,
+        startinglink=prsrvtn_drvtv_policy_check_cl,
+        description='Yes, policy checks on preservation derivatives please!'
+    )
+
+    choice_yes_prsrvtn_drvtv_plcy_chck_mscc_pk = '06aad779-758b-4791-81ef-2342c6af3109'
+    MicroServiceChainChoice.objects.create(
+        id=choice_yes_prsrvtn_drvtv_plcy_chck_mscc_pk,
+        chainavailable=chain_yes_prsrvtn_drvtv_plcy_chck_mscc,
+        choiceavailableatlink=prsrvtn_drvtv_policy_check_choice_cl
+    )
+
+    # MS Chain Choice and Chain that say "No, I do not want to do policy checks
+    # on preservation derivatives"
+    chain_no_prsrvtn_drvtv_plcy_chck_mscc_pk = 'b7ce05f0-9d94-4b3e-86cc-d4b2c6dba546'
+    chain_no_prsrvtn_drvtv_plcy_chck_mscc = MicroServiceChain.objects.create(
+        id=chain_no_prsrvtn_drvtv_plcy_chck_mscc_pk,
+        startinglink=ccss_drvtv_policy_check_cl,
+        description='No, policy checks on preservation derivatives please!'
+    )
+
+    choice_no_prsrvtn_drvtv_plcy_chck_mscc_pk = '4fca61c6-3314-4f3a-8284-6db5590cc736'
+    MicroServiceChainChoice.objects.create(
+        id=choice_no_prsrvtn_drvtv_plcy_chck_mscc_pk,
+        chainavailable=chain_no_prsrvtn_drvtv_plcy_chck_mscc,
+        choiceavailableatlink=prsrvtn_drvtv_policy_check_choice_cl
+    )
+
+
+    # Configure any links that exit to "Move to metadata reminder" to now exit
+    # to the "Policy checks for preservation derivatives" choice point.
+    MicroServiceChainLinkExitCode.objects\
+        .filter(nextmicroservicechainlink=move_metadata_cl)\
+        .update(nextmicroservicechainlink=prsrvtn_drvtv_policy_check_choice_cl)
+    MicroServiceChainLink.objects\
+        .filter(defaultnextchainlink=move_metadata_cl)\
+        .update(defaultnextchainlink=prsrvtn_drvtv_policy_check_choice_cl)
+
+
 
     ###########################################################################
     # Create MediaConch Command for Policy Checking
