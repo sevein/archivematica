@@ -375,21 +375,6 @@ def data_migration(apps, schema_editor):
         microservicegroup='Policy checks for derivatives'
     )
 
-    # Make "Policy checks for access derivatives" exit to "Move to metadata
-    # reminder"
-    for pk, exit_code, exit_message in (
-            ('a9c2f8b8-e21f-4bf2-af22-e304c23b0143', 0,
-             'Completed successfully'),
-            ('db44f68e-259a-4ff0-a122-d3281d6f2c7d', 1,
-             'Failed')):
-        MicroServiceChainLinkExitCode.objects.create(
-            id=pk,
-            microservicechainlink=ccss_drvtv_policy_check_cl,
-            exitcode=exit_code,
-            exitmessage=exit_message,
-            nextmicroservicechainlink=move_metadata_cl
-        )
-
     # Make "Policy checks for preservation derivatives" exit to "Policy checks
     # for access derivatives"
     for pk, exit_code, exit_message in (
@@ -469,6 +454,21 @@ def data_migration(apps, schema_editor):
     MicroServiceChainLink.objects\
         .filter(defaultnextchainlink=move_metadata_cl)\
         .update(defaultnextchainlink=prsrvtn_drvtv_policy_check_choice_cl)
+
+    # Make "Policy checks for access derivatives" exit to "Move to metadata
+    # reminder". (Note: this crucially must follow the above update!)
+    for pk, exit_code, exit_message in (
+            ('a9c2f8b8-e21f-4bf2-af22-e304c23b0143', 0,
+             'Completed successfully'),
+            ('db44f68e-259a-4ff0-a122-d3281d6f2c7d', 1,
+             'Failed')):
+        MicroServiceChainLinkExitCode.objects.create(
+            id=pk,
+            microservicechainlink=ccss_drvtv_policy_check_cl,
+            exitcode=exit_code,
+            exitmessage=exit_message,
+            nextmicroservicechainlink=move_metadata_cl
+        )
 
 
 
