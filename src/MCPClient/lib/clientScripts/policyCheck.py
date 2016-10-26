@@ -152,7 +152,7 @@ class PolicyChecker:
         if policy_filename and mc_stdout and self.sip_policies_dir:
             purpose_dir = {
                 'checkingPresDerivativePolicy': 'preservationDerivatives',
-                'checkingPresDerivativePolicy': 'accessDerivatives'
+                'checkingAccessDerivativePolicy': 'accessDerivatives'
             }.get(self.purpose, 'originals')
             purpose_path = os.path.join(self.sip_policies_dir, purpose_dir)
             if not os.path.isdir(purpose_path):
@@ -183,7 +183,7 @@ class PolicyChecker:
 
     @property
     def sip_logs_dir(self):
-        """Return the absolute path the the logs/ directory of the SIP that the
+        """Return the absolute path the logs/ directory of the SIP that the
         target file is a part of.
         """
         if self._sip_logs_dir:
@@ -215,7 +215,7 @@ class PolicyChecker:
                 self._sip_policies_dir = _sip_policies_dir
             else:
                 try:
-                    os.makedirs(self._sip_policies_dir)
+                    os.makedirs(_sip_policies_dir)
                 except:
                     pass
                 else:
