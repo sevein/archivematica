@@ -294,8 +294,12 @@ def set_up_mapping_aip_index(client):
         aipfile_mets_mapping = json.load(f)
 
     mapping = {
+        'created': {'type': 'double'},
+        'filePath': {'type': 'string'},
         'name': _sortable_string_field_specification('name'),
+        'origin': MACHINE_READABLE_FIELD_SPEC,
         'size': {'type': 'double'},
+        'status': MACHINE_READABLE_FIELD_SPEC,
         'uuid': MACHINE_READABLE_FIELD_SPEC,
         'mets': aip_mets_mapping,
     }
