@@ -236,7 +236,7 @@ class PolicyChecker:
             printing=False)
         output = json.loads(stdout)
         # TODO: will add originals-checking to this tuple in future
-        if self.purpose in ('checkingPresDerivativePolicy',)
+        if self.purpose in ('checkingPresDerivativePolicy',):
             self.save_to_logs_dir(output)
         if exitstatus == 0:
             print('Command {} completed with output {}'.format(
