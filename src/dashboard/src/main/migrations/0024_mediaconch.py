@@ -314,8 +314,6 @@ def data_migration(apps, schema_editor):
     # Policy Check for Derivative CHAIN LINKs, etc.
     ###########################################################################
 
-
-
     # Preservation Derivative Policy Check Standard Task Config.
     prsrvtn_drvtv_policy_check_stc_pk = '0dc703b8-780a-4643-a427-bb60bd5879a8'
     StandardTaskConfig.objects.create(
@@ -364,19 +362,85 @@ def data_migration(apps, schema_editor):
         microservicegroup='Policy checks for derivatives'
     )
 
+    ###########################################################################
+    # BEGIN Micro-service that asks "Do you want to do policy checks on ACCESS
+    # derivatives?"
+    ###########################################################################
+
+    # Access Derivative Policy Check CHOICE POINT Task Config
+    ccss_drvtv_plcy_chck_choice_tc_pk = 'a91ad9f6-1027-409c-8e66-4c8769ff9f06'
+    ccss_drvtv_plcy_chck_choice_tc = TaskConfig.objects.create(
+        id=ccss_drvtv_plcy_chck_choice_tc_pk,
+        tasktype=user_choice_type,
+        tasktypepkreference=None,
+        description='Perform policy checks on access derivatives?'
+    )
+
+    # "Perform policy checks on access derivatives?" CHOICE chain link.
+    ccss_drvtv_policy_check_choice_cl_pk = \
+        '8ce07e94-6130-4987-96f0-2399ad45c5c2'
+    ccss_drvtv_policy_check_choice_cl = MicroServiceChainLink.objects.create(
+        id=ccss_drvtv_policy_check_choice_cl_pk,
+        currenttask=ccss_drvtv_plcy_chck_choice_tc,
+        defaultnextchainlink=None,
+        microservicegroup='Policy checks for derivatives'
+    )
+
+    # MS Chain Choice and Chain that say "Yes, I do want to do policy checks on
+    # access derivatives"
+    chain_yes_ccss_drvtv_plcy_chck_msc_pk = \
+        'd9760427-b488-4381-832a-de10106de6fe'
+    chain_yes_ccss_drvtv_plcy_chck_msc = MicroServiceChain.objects.create(
+        id=chain_yes_ccss_drvtv_plcy_chck_msc_pk,
+        startinglink=ccss_drvtv_policy_check_cl,
+        description='Yes'  # Yes, policy checks on access derivatives please!'
+    )
+
+    choice_yes_ccss_drvtv_plcy_chck_mscc_pk = \
+        '6cf8bb30-e2f3-4db8-ad7b-81fd6fc05199'
+    MicroServiceChainChoice.objects.create(
+        id=choice_yes_ccss_drvtv_plcy_chck_mscc_pk,
+        chainavailable=chain_yes_ccss_drvtv_plcy_chck_msc,
+        choiceavailableatlink=ccss_drvtv_policy_check_choice_cl
+    )
+
+    # MS Chain Choice and Chain that say "No, I do not want to do policy checks
+    # on access derivatives"
+    chain_no_ccss_drvtv_plcy_chck_msc_pk = \
+        '76befd52-14c3-44f9-838f-15a4e01624b0'
+    chain_no_ccss_drvtv_plcy_chck_msc = MicroServiceChain.objects.create(
+        id=chain_no_ccss_drvtv_plcy_chck_msc_pk,
+        startinglink=move_metadata_cl,  # crucially points to whatever Access
+                                        # Policy checks points to when done.
+        description='No'  # No policy checks on access derivatives please!'
+    )
+
+    choice_no_ccss_drvtv_plcy_chck_mscc_pk = \
+        'b4bf70d2-aa37-44f5-b3fa-04ad2961e979'
+    MicroServiceChainChoice.objects.create(
+        id=choice_no_ccss_drvtv_plcy_chck_mscc_pk,
+        chainavailable=chain_no_ccss_drvtv_plcy_chck_msc,
+        choiceavailableatlink=ccss_drvtv_policy_check_choice_cl
+    )
+
+    ###########################################################################
+    # END Micro-service that asks "Do you want to do policy checks on ACCESS
+    # derivatives?"
+    ###########################################################################
+
     # "Policy checks for preservation derivatives" chain link.
     # It is positioned before the "Policy checks for access derivatives"
-    # chain link.
+    # CHOICE chain link.
     prsrvtn_drvtv_policy_check_cl_pk = '0fd20984-db3c-492b-a512-eedd74bacc82'
     prsrvtn_drvtv_policy_check_cl = MicroServiceChainLink.objects.create(
         id=prsrvtn_drvtv_policy_check_cl_pk,
         currenttask=prsrvtn_drvtv_policy_check_tc,
-        defaultnextchainlink=ccss_drvtv_policy_check_cl,
+        defaultnextchainlink=ccss_drvtv_policy_check_choice_cl,
         microservicegroup='Policy checks for derivatives'
     )
 
-    # Make "Policy checks for preservation derivatives" exit to "Policy checks
-    # for access derivatives"
+    # Make "Policy checks for preservation derivatives" exit to the "Policy
+    # checks for access derivatives" CHOICE chain link.
     for pk, exit_code, exit_message in (
             ('088ef391-3c7c-4dff-be9b-34af19f3d38b', 0,
              'Completed successfully'),
@@ -387,16 +451,17 @@ def data_migration(apps, schema_editor):
             microservicechainlink=prsrvtn_drvtv_policy_check_cl,
             exitcode=exit_code,
             exitmessage=exit_message,
-            nextmicroservicechainlink=ccss_drvtv_policy_check_cl
+            nextmicroservicechainlink=ccss_drvtv_policy_check_choice_cl
         )
 
-
-
-    # Micro-service that asks "Do you want to do policy checks on preservation
-    # derivatives?"
+    ###########################################################################
+    # BEGIN Micro-service that asks "Do you want to do policy checks on
+    # PRESERVATION derivatives?"
+    ###########################################################################
 
     # Preservation Derivative Policy Check CHOICE POINT Task Config
-    prsrvtn_drvtv_plcy_chck_choice_tc_pk = 'a4aad773-480a-422a-8e61-124fc7487572'
+    prsrvtn_drvtv_plcy_chck_choice_tc_pk = \
+        'a4aad773-480a-422a-8e61-124fc7487572'
     prsrvtn_drvtv_plcy_chck_choice_tc = TaskConfig.objects.create(
         id=prsrvtn_drvtv_plcy_chck_choice_tc_pk,
         tasktype=user_choice_type,
@@ -405,46 +470,58 @@ def data_migration(apps, schema_editor):
     )
 
     # "Perform policy checks on preservation derivatives?" CHOICE chain link.
-    prsrvtn_drvtv_policy_check_choice_cl_pk = '153c5f41-3cfb-47ba-9150-2dd44ebc27df'
-    prsrvtn_drvtv_policy_check_choice_cl = MicroServiceChainLink.objects.create(
-        id=prsrvtn_drvtv_policy_check_choice_cl_pk,
-        currenttask=prsrvtn_drvtv_plcy_chck_choice_tc,
-        defaultnextchainlink=None,
-        microservicegroup='Policy checks for derivatives'
-    )
+    prsrvtn_drvtv_policy_check_choice_cl_pk = \
+        '153c5f41-3cfb-47ba-9150-2dd44ebc27df'
+    prsrvtn_drvtv_policy_check_choice_cl = \
+        MicroServiceChainLink.objects.create(
+            id=prsrvtn_drvtv_policy_check_choice_cl_pk,
+            currenttask=prsrvtn_drvtv_plcy_chck_choice_tc,
+            defaultnextchainlink=None,
+            microservicegroup='Policy checks for derivatives'
+        )
 
     # MS Chain Choice and Chain that say "Yes, I do want to do policy checks on
     # preservation derivatives"
-    chain_yes_prsrvtn_drvtv_plcy_chck_mscc_pk = '3a55f688-eca3-4ebc-a012-4ce68290e7b0'
-    chain_yes_prsrvtn_drvtv_plcy_chck_mscc = MicroServiceChain.objects.create(
-        id=chain_yes_prsrvtn_drvtv_plcy_chck_mscc_pk,
+    chain_yes_prsrvtn_drvtv_plcy_chck_msc_pk = \
+        '3a55f688-eca3-4ebc-a012-4ce68290e7b0'
+    chain_yes_prsrvtn_drvtv_plcy_chck_msc = MicroServiceChain.objects.create(
+        id=chain_yes_prsrvtn_drvtv_plcy_chck_msc_pk,
         startinglink=prsrvtn_drvtv_policy_check_cl,
-        description='Yes, policy checks on preservation derivatives please!'
+        description='Yes'  # Yes, policy checks on preservation derivatives
+                           # please!'
     )
 
-    choice_yes_prsrvtn_drvtv_plcy_chck_mscc_pk = '06aad779-758b-4791-81ef-2342c6af3109'
+    choice_yes_prsrvtn_drvtv_plcy_chck_mscc_pk = \
+        '06aad779-758b-4791-81ef-2342c6af3109'
     MicroServiceChainChoice.objects.create(
         id=choice_yes_prsrvtn_drvtv_plcy_chck_mscc_pk,
-        chainavailable=chain_yes_prsrvtn_drvtv_plcy_chck_mscc,
+        chainavailable=chain_yes_prsrvtn_drvtv_plcy_chck_msc,
         choiceavailableatlink=prsrvtn_drvtv_policy_check_choice_cl
     )
 
     # MS Chain Choice and Chain that say "No, I do not want to do policy checks
     # on preservation derivatives"
-    chain_no_prsrvtn_drvtv_plcy_chck_mscc_pk = 'b7ce05f0-9d94-4b3e-86cc-d4b2c6dba546'
-    chain_no_prsrvtn_drvtv_plcy_chck_mscc = MicroServiceChain.objects.create(
-        id=chain_no_prsrvtn_drvtv_plcy_chck_mscc_pk,
-        startinglink=ccss_drvtv_policy_check_cl,
-        description='No, policy checks on preservation derivatives please!'
+    chain_no_prsrvtn_drvtv_plcy_chck_msc_pk = \
+        'b7ce05f0-9d94-4b3e-86cc-d4b2c6dba546'
+    chain_no_prsrvtn_drvtv_plcy_chck_msc = MicroServiceChain.objects.create(
+        id=chain_no_prsrvtn_drvtv_plcy_chck_msc_pk,
+        startinglink=ccss_drvtv_policy_check_choice_cl,
+        description='No'  # No policy checks on preservation derivatives
+                          # please!'
     )
 
-    choice_no_prsrvtn_drvtv_plcy_chck_mscc_pk = '4fca61c6-3314-4f3a-8284-6db5590cc736'
+    choice_no_prsrvtn_drvtv_plcy_chck_mscc_pk = \
+        '4fca61c6-3314-4f3a-8284-6db5590cc736'
     MicroServiceChainChoice.objects.create(
         id=choice_no_prsrvtn_drvtv_plcy_chck_mscc_pk,
-        chainavailable=chain_no_prsrvtn_drvtv_plcy_chck_mscc,
+        chainavailable=chain_no_prsrvtn_drvtv_plcy_chck_msc,
         choiceavailableatlink=prsrvtn_drvtv_policy_check_choice_cl
     )
 
+    ###########################################################################
+    # END Micro-service that asks "Do you want to do policy checks on
+    # PRESERVATION derivatives?"
+    ###########################################################################
 
     # Configure any links that exit to "Move to metadata reminder" to now exit
     # to the "Policy checks for preservation derivatives" choice point.
@@ -469,8 +546,6 @@ def data_migration(apps, schema_editor):
             exitmessage=exit_message,
             nextmicroservicechainlink=move_metadata_cl
         )
-
-
 
     ###########################################################################
     # Create MediaConch Command for Policy Checking
