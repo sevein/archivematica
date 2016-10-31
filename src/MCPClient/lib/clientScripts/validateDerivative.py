@@ -1,5 +1,6 @@
 from __future__ import print_function
 import ast
+import os
 import sys
 
 import django
@@ -13,9 +14,7 @@ from dicts import replace_string_values
 
 SUCCESS_CODE = 0
 FAIL_CODE = 1
-# NOT_DERIVATIVE_CODE = 2
 NOT_DERIVATIVE_CODE = 0
-# NO_RULES_CODE = 2
 NO_RULES_CODE = 0
 
 
@@ -102,9 +101,12 @@ class DerivativeValidator:
         event_detail = ('program="{tool.description}";'
                         'version="{tool.version}"'.format(
                             tool=rule.command.tool))
-        if (rule.command.description == 'Validate using MediaConch' and
-                output.get('eventOutcomeInformation') != 'pass'):
-            result = 'failed'
+        if rule.command.description == 'Validate using MediaConch':
+            if output.get('eventOutcomeInformation') != 'pass':
+                result = 'failed'
+            if self.purpose in ('validatePreservationDerivative',):
+                self.save_mediaconch_stdout_to_logs_dir(output)
+
         print('Creating {} event for {} ({})'
               .format(self.purpose, self.file_path, self.file_uuid))
         databaseFunctions.insertIntoEvents(
@@ -115,3 +117,36 @@ class DerivativeValidator:
             eventOutcomeDetailNote=output.get('eventOutcomeDetailNote'),
         )
         return result
+
+    def save_mediaconch_stdout_to_logs_dir(self, output):
+        """Save the output of running MediaConch's implementation checker
+        against the input file to
+        logs/implementationChecks/<input_filename>.xml in the SIP,
+        """
+        mc_stdout = output.get('stdout')
+        if mc_stdout and self.sip_implementation_checks_dir:
+            filename = os.path.basename(self.file_path)
+            stdout_path = os.path.join(self.sip_implementation_checks_dir,
+                                       '{}.xml'.format(filename))
+            with open(stdout_path, 'w') as f:
+                f.write(mc_stdout)
+
+    @property
+    def sip_implementation_checks_dir(self):
+        if self._sip_implementation_checks_dir:
+            return self._sip_implementation_checks_dir
+        if self.sip_logs_dir:
+            _sip_implementation_checks_dir = os.path.join(
+                self.sip_logs_dir, 'policyChecks')
+            if os.path.isdir(_sip_implementation_checks_dir):
+                self._sip_implementation_checks_dir = \
+                    _sip_implementation_checks_dir
+            else:
+                try:
+                    os.makedirs(_sip_implementation_checks_dir)
+                except OSError:
+                    pass
+                else:
+                    self._sip_implementation_checks_dir = \
+                        _sip_implementation_checks_dir
+        return self._sip_implementation_checks_dir

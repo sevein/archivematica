@@ -595,6 +595,7 @@ class Migration(migrations.Migration):
 
 mediaconch_command_script = '''
 from __future__ import print_function, unicode_literals
+from collections import namedtuple
 import json
 import subprocess
 import sys
@@ -610,6 +611,9 @@ NS = '{https://mediaarea.net/mediaconch}'
 
 class MediaConchException(Exception):
     pass
+
+
+Parse = namedtuple('Parse', 'etree_el stdout')
 
 
 def parse_mediaconch_data(target):
@@ -634,7 +638,7 @@ def parse_mediaconch_data(target):
         raise MediaConchException("MediaConch failed when running: %s" % (
             ' '.join(args),))
     try:
-        return etree.fromstring(output)
+        return Parse(etree_el=etree.fromstring(output), stdout=output)
     except etree.XMLSyntaxError:
         raise MediaConchException(
             "MediaConch failed when attempting to parse the XML output by"
@@ -743,18 +747,20 @@ def main(target):
     """
 
     try:
-        doc = parse_mediaconch_data(target)
-        impl_checks = get_impl_checks(doc)
+        parse = parse_mediaconch_data(target)
+        impl_checks = get_impl_checks(parse.etree_el)
         info, detail = get_event_outcome_information_detail(impl_checks)
         print(json.dumps({
             'eventOutcomeInformation': info,
-            'eventOutcomeDetailNote': detail
+            'eventOutcomeDetailNote': detail,
+            'stdout': parse.stdout
         }))
         return SUCCESS_CODE
     except MediaConchException as e:
         print(json.dumps({
             'eventOutcomeInformation': 'fail',
-            'eventOutcomeDetailNote': str(e)
+            'eventOutcomeDetailNote': str(e),
+            'stdout': None
         }), file=sys.stderr)
         return ERROR_CODE
 
@@ -767,6 +773,7 @@ if __name__ == '__main__':
 
 mediaconch_policy_check_command_script = '''
 from __future__ import print_function, unicode_literals
+from collections import namedtuple
 import json
 import os
 import subprocess
@@ -782,6 +789,9 @@ NS = '{https://mediaarea.net/mediaconch}'
 
 class MediaConchException(Exception):
     pass
+
+
+Parse = namedtuple('Parse', 'etree_el stdout')
 
 
 class MediaConchPolicyCheckerCommand:
@@ -818,7 +828,7 @@ class MediaConchPolicyCheckerCommand:
             raise MediaConchException("MediaConch failed when running: %s" % (
                 ' '.join(args),))
         try:
-            return etree.fromstring(output), output
+            return Parse(etree_el=etree.fromstring(output), stdout=output)
         except etree.XMLSyntaxError:
             raise MediaConchException(
                 "The MediaConch command failed when attempting to parse the"
@@ -904,15 +914,15 @@ class MediaConchPolicyCheckerCommand:
         and print a JSON representation of that output.
         """
         try:
-            doc, mc_stdout = self.parse_mediaconch_output(target)
-            policy_checks = self.get_policy_checks(doc)
+            parse = self.parse_mediaconch_output(target)
+            policy_checks = self.get_policy_checks(parse.etree_el)
             info, detail = self.get_event_outcome_information_detail(
                 policy_checks)
             print(json.dumps({
                 'eventOutcomeInformation': info,
                 'eventOutcomeDetailNote': detail,
                 'policy': self.policy_filename,
-                'stdout': mc_stdout
+                'stdout': parse.stdout
             }))
             return SUCCESS_CODE
         except MediaConchException as e:

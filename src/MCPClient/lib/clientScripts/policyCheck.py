@@ -146,17 +146,19 @@ class PolicyChecker:
     def save_stdout_to_logs_dir(self, output):
         """Save the output of running MediaConch's policy checker against the
         input file to
-        logs/policyChecks/<policy_filename>/<input_filename>.xsl in the SIP,
+        logs/policyChecks/<policy_filename>/<input_filename>.xml in the SIP.
         """
         policy_filename = output.get('policy')
         mc_stdout = output.get('stdout')
-        if policy_filename and mc_stdout and self.sip_policies_dir:
+        if policy_filename and mc_stdout and self.sip_policy_checks_dir:
             policy_dirname, _ = os.path.splitext(policy_filename)
-            policy_dirpath = os.path.join(self.sip_policies_dir, policy_dirname)
+            policy_dirpath = os.path.join(
+                self.sip_policy_checks_dir, policy_dirname)
             if not os.path.isdir(policy_dirpath):
                 os.makedirs(policy_dirpath)
             filename = os.path.basename(self.file_path)
-            stdout_path = os.path.join(policy_dirpath, '{}.xml'.format(filename))
+            stdout_path = os.path.join(
+                policy_dirpath, '{}.xml'.format(filename))
             with open(stdout_path, 'w') as f:
                 f.write(mc_stdout)
 
@@ -166,9 +168,10 @@ class PolicyChecker:
         if it is not there already.
         """
         policy_filename = output.get('policy')
-        if policy_filename and self.sip_policies_dir:
+        if policy_filename and self.sip_policy_checks_dir:
             policy_dirname, _ = os.path.splitext(policy_filename)
-            policy_dirpath = os.path.join(self.sip_policies_dir, policy_dirname)
+            policy_dirpath = os.path.join(
+                self.sip_policy_checks_dir, policy_dirname)
             if not os.path.isdir(policy_dirpath):
                 os.makedirs(policy_dirpath)
             dst = os.path.join(policy_dirpath, policy_filename)
@@ -205,21 +208,22 @@ class PolicyChecker:
             return None
 
     @property
-    def sip_policies_dir(self):
-        if self._sip_policies_dir:
-            return self._sip_policies_dir
+    def sip_policy_checks_dir(self):
+        if self._sip_policy_checks_dir:
+            return self._sip_policy_checks_dir
         if self.sip_logs_dir:
-            _sip_policies_dir = os.path.join(self.sip_logs_dir, 'policyChecks')
-            if os.path.isdir(_sip_policies_dir):
-                self._sip_policies_dir = _sip_policies_dir
+            _sip_policy_checks_dir = os.path.join(
+                self.sip_logs_dir, 'policyChecks')
+            if os.path.isdir(_sip_policy_checks_dir):
+                self._sip_policy_checks_dir = _sip_policy_checks_dir
             else:
                 try:
-                    os.makedirs(_sip_policies_dir)
+                    os.makedirs(_sip_policy_checks_dir)
                 except OSError:
                     pass
                 else:
-                    self._sip_policies_dir = _sip_policies_dir
-        return self._sip_policies_dir
+                    self._sip_policy_checks_dir = _sip_policy_checks_dir
+        return self._sip_policy_checks_dir
 
     def _execute_rule_command(self, rule):
         """Execute the FPR command of FPR rule ``rule`` against the file passed
