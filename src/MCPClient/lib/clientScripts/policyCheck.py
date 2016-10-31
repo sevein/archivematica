@@ -40,7 +40,7 @@ class PolicyChecker:
         self.is_manually_normalized_access_derivative = \
             self.get_is_manually_normalized_access_derivative()
         self._sip_logs_dir = None
-        self._sip_policies_dir = None
+        self._sip_policy_checks_dir = None
 
     def get_policies_dir(self):
         return os.path.join(self.shared_path, 'sharedMicroServiceTasksConfigs',

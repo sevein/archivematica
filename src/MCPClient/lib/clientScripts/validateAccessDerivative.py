@@ -37,5 +37,6 @@ if __name__ == '__main__':
     file_path = sys.argv[1]
     file_uuid = sys.argv[2]
     sip_uuid = sys.argv[3]
+    shared_path = sys.argv[4]
     validator = AccessDerivativeValidator(file_path, file_uuid, sip_uuid)
     sys.exit(validator.validate())

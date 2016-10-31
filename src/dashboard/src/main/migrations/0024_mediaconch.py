@@ -174,7 +174,8 @@ def data_migration(apps, schema_editor):
     StandardTaskConfig.objects.create(
         id=vldt_prsrvtn_drvtv_stc_pk,
         execute='validatePreservationDerivative_v0.0',
-        arguments='"%relativeLocation%" "%fileUUID%" "%SIPUUID%"',
+        arguments=('"%relativeLocation%" "%fileUUID%" "%SIPUUID%"'
+                   ' "%sharedPath%"'),
         filter_subdir='objects/'
     )
 
@@ -232,7 +233,8 @@ def data_migration(apps, schema_editor):
     StandardTaskConfig.objects.create(
         id=vldt_ccss_drvtv_stc_pk,
         execute='validateAccessDerivative_v0.0',
-        arguments='"%relativeLocation%" "%fileUUID%" "%SIPUUID%"',
+        arguments=('"%relativeLocation%" "%fileUUID%" "%SIPUUID%"'
+                   ' "%sharedPath%"'),
         filter_subdir='DIP/objects/'
     )
 

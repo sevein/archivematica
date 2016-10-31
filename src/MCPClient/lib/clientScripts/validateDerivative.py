@@ -28,10 +28,13 @@ class DerivativeValidator:
     validateAccessDerivative.py.
     """
 
-    def __init__(self, file_path, file_uuid, sip_uuid):
+    def __init__(self, file_path, file_uuid, sip_uuid, shared_path):
         self.file_path = file_path
         self.file_uuid = file_uuid
         self.sip_uuid = sip_uuid
+        self.shared_path = shared_path
+        self._sip_logs_dir = None
+        self._sip_implementation_checks_dir = None
 
     def validate(self):
         if not self.is_derivative():
@@ -130,6 +133,30 @@ class DerivativeValidator:
                                        '{}.xml'.format(filename))
             with open(stdout_path, 'w') as f:
                 f.write(mc_stdout)
+
+    @property
+    def sip_logs_dir(self):
+        """Return the absolute path the logs/ directory of the SIP that the
+        target file is a part of.
+        """
+        if self._sip_logs_dir:
+            return self._sip_logs_dir
+        try:
+            sip_model = SIP.objects.get(uuid=self.sip_uuid)
+        except (SIP.DoesNotExist, SIP.MultipleObjectsReturned):
+            print('Warning: unable to retrieve SIP model corresponding to SIP'
+                  ' UUID {}'.format(self.sip_uuid), file=sys.stderr)
+            return None
+        else:
+            sip_path = sip_model.currentpath.replace(
+                '%sharedPath%', self.shared_path, 1)
+            logs_dir = os.path.join(sip_path, 'logs')
+            if os.path.isdir(logs_dir):
+                self._sip_logs_dir = logs_dir
+                return logs_dir
+            print('Warning: unable to find a logs/ directory in the SIP'
+                  ' with UUID {}'.format(self.sip_uuid), file=sys.stderr)
+            return None
 
     @property
     def sip_implementation_checks_dir(self):
