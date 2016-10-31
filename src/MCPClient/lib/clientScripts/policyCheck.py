@@ -145,33 +145,33 @@ class PolicyChecker:
 
     def save_stdout_to_logs_dir(self, output):
         """Save the output of running MediaConch's policy checker against the
-        input file to a subdirectory of the logs/policies directory of the SIP.
+        input file to
+        logs/policyChecks/<policy_filename>/<input_filename>.xsl in the SIP,
         """
         policy_filename = output.get('policy')
         mc_stdout = output.get('stdout')
         if policy_filename and mc_stdout and self.sip_policies_dir:
-            purpose_dir = {
-                'checkingPresDerivativePolicy': 'preservationDerivatives'
-            }.get(self.purpose, 'originals')
-            purpose_path = os.path.join(self.sip_policies_dir, purpose_dir)
-            if not os.path.isdir(purpose_path):
-                os.makedirs(purpose_path)
             policy_dirname, _ = os.path.splitext(policy_filename)
-            policy_path = os.path.join(purpose_path, policy_dirname)
-            if not os.path.isdir(policy_path):
-                os.makedirs(policy_path)
+            policy_dirpath = os.path.join(self.sip_policies_dir, policy_dirname)
+            if not os.path.isdir(policy_dirpath):
+                os.makedirs(policy_dirpath)
             filename = os.path.basename(self.file_path)
-            stdout_path = os.path.join(policy_path, '{}.xml'.format(filename))
+            stdout_path = os.path.join(policy_dirpath, '{}.xml'.format(filename))
             with open(stdout_path, 'w') as f:
                 f.write(mc_stdout)
 
     def save_policy_to_logs_dir(self, output):
-        """Save the policy file ``policy_filename`` to the logs/policies/
-        directory of the SIP, if it is not there already.
+        """Save the policy file ``policy_filename`` to
+        logs/policyChecks/<policy_filename>/<policy_filename>.xsl in the SIP,
+        if it is not there already.
         """
         policy_filename = output.get('policy')
         if policy_filename and self.sip_policies_dir:
-            dst = os.path.join(self.sip_policies_dir, policy_filename)
+            policy_dirname, _ = os.path.splitext(policy_filename)
+            policy_dirpath = os.path.join(self.sip_policies_dir, policy_dirname)
+            if not os.path.isdir(policy_dirpath):
+                os.makedirs(policy_dirpath)
+            dst = os.path.join(policy_dirpath, policy_filename)
             if not os.path.isfile(dst):
                 src = os.path.join(self.policies_dir, policy_filename)
                 if not os.path.isfile(src):
@@ -209,13 +209,13 @@ class PolicyChecker:
         if self._sip_policies_dir:
             return self._sip_policies_dir
         if self.sip_logs_dir:
-            _sip_policies_dir = os.path.join(self.sip_logs_dir, 'policies')
+            _sip_policies_dir = os.path.join(self.sip_logs_dir, 'policyChecks')
             if os.path.isdir(_sip_policies_dir):
                 self._sip_policies_dir = _sip_policies_dir
             else:
                 try:
                     os.makedirs(_sip_policies_dir)
-                except:
+                except OSError:
                     pass
                 else:
                     self._sip_policies_dir = _sip_policies_dir
