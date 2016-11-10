@@ -1,5 +1,4 @@
 from __future__ import print_function
-import ast
 from functools import wraps
 import json
 
@@ -7,16 +6,15 @@ from django.core.urlresolvers import reverse
 from django.http import HttpResponse, HttpResponseBadRequest, HttpResponseRedirect, HttpResponseServerError
 
 from components import advanced_search
+from components.ingest import pair_matcher
 from main import models
 
 from agentarchives.archivesspace import ArchivesSpaceClient, AuthenticationError, ConnectionError
-
-from components.ingest import pair_matcher
+from mcpserver import Client as MCPServerClient
 
 
 def get_as_system_client():
-    repl_dict = models.MicroServiceChoiceReplacementDic.objects.get(description='ArchivesSpace Config')
-    config = ast.literal_eval(repl_dict.replacementdic)
+    config = MCPServerClient().get_microservice_choice_replacement_arguments(description='ArchivesSpace Config')
 
     return ArchivesSpaceClient(
         host=config['%host%'],

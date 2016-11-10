@@ -1,0 +1,122 @@
+syntax = "proto3";
+
+package archivematica;
+
+service MCPServer {
+
+  // Approve a transfer
+  rpc ApproveTransfer(ApproveTransferRequest) returns (ApproveTransferResponse);
+
+  // Approve a job
+  rpc ApproveJob(ApproveJobRequest) returns (ApproveJobResponse);
+
+  // List jobs awaiting for approval
+  rpc ListJobsAwaitingApproval(Empty) returns (ListJobsAwaitingApprovalResponse);
+
+  // List of microservice choice replacements
+  rpc ListMicroserviceChoiceReplacements(ListMicroserviceChoiceReplacementsRequest) returns (ListMicroserviceChoiceReplacementsResponse);
+
+  // Update a microservice choice replacement
+  rpc SetMicroserviceChoiceReplacement(SetMicroserviceChoiceReplacementRequest) returns (Empty);
+
+  // TEMPORARY! Used in the Dashboard but it should be done differently in the future.
+  // The Dashboard should stop generating the configuration files.
+  // Related: https://github.com/artefactual/archivematica/pull/493
+  rpc ListMicroserviceChoiceDuplicates(ListMicroserviceChoiceDuplicatesRequest) returns (ListMicroserviceChoiceDuplicatesResponse);
+
+}
+
+message Empty {}
+
+// rpc ApproveTransfer
+
+message ApproveTransferRequest {
+  string UUID = 1;
+}
+
+message ApproveTransferResponse {
+  bool approved = 1;
+}
+
+// rpc ApproveJob
+
+message ApproveJobRequest {
+  string UUID = 1;
+  string chainUUID = 2;
+}
+
+message ApproveJobResponse {
+  bool approved = 1;
+}
+
+// rpc ListJobsAwaitingApproval
+
+message ListJobsAwaitingApprovalResponse {
+
+  message Job {
+    message Choice {
+      string value = 1;
+      string description = 2;
+    }
+
+    enum UnitType {
+      UNKNOWN = 0;
+      TRANSFER = 1;
+      INGEST = 2;
+    }
+
+    string UUID = 1;
+    UnitType unitType = 2;
+    repeated Choice choices = 3;
+  }
+
+  repeated Job jobs = 1;
+  int32 transferCount = 2;
+  int32 ingestCount = 3;
+
+}
+
+// rpc ListMicroserviceChoiceReplacements
+
+message ListMicroserviceChoiceReplacementsRequest {
+  string microserviceUUID = 1;   // If you use this field you will obtain the full list of replacements.
+  string description = 2;        // e.g. "Archivists Toolkit Config", "9 - ultra compression"...
+}
+
+message ListMicroserviceChoiceReplacementsResponse {
+
+  message MicroserviceChoiceReplacement {
+    string microserviceUUID = 1;
+    string description = 2;
+    map <string,string> arguments = 3;
+  }
+
+  repeated MicroserviceChoiceReplacement replacements = 2;
+
+}
+
+// rpc SetMicroserviceChoiceReplacement
+
+message SetMicroserviceChoiceReplacementRequest {
+  string microserviceUUID = 1;
+  string description = 2;
+  map <string,string> arguments = 3;
+}
+
+// rpc ListMicroserviceChoiceDuplicates
+
+message ListMicroserviceChoiceDuplicatesRequest {
+  string linkName = 1;
+  string choiceName = 2;
+}
+
+message ListMicroserviceChoiceDuplicatesResponse {
+
+  message Duplicate {
+    string srcUUID = 1;
+    string dstUUID = 2;
+  }
+
+  repeated Duplicate duplicates = 1;
+
+}

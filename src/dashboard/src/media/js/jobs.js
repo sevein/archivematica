@@ -570,7 +570,7 @@ var BaseJobView = Backbone.View.extend({
 
   initialize: function()
     {
-      _.bindAll(this, 'render', 'approveJob', 'rejectJob');
+      _.bindAll(this, 'render');
       this.model.bind('change', this.render);
       this.model.view = this;
       this.uid = this.options.uid;

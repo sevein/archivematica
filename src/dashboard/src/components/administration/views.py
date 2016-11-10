@@ -20,18 +20,15 @@ import logging
 import os
 import shutil
 import subprocess
-import sys
 
 from django.core.urlresolvers import reverse
 from django.contrib import messages
 from django.contrib.auth.decorators import user_passes_test
 from django.db.models import Max, Min
-from django.forms.models import modelformset_factory
 from django.http import Http404, HttpResponseNotAllowed, HttpResponseRedirect
 from django.shortcuts import redirect, render
 from django.template import RequestContext
 
-from main import forms
 from main import models
 from components.administration.forms import AtomDipUploadSettingsForm
 from components.administration.forms import AgentForm
@@ -44,6 +41,7 @@ from components.administration.models import ArchivesSpaceConfig, ArchivistsTool
 import components.administration.views_processing as processing_views
 import components.decorators as decorators
 import components.helpers as helpers
+from mcpserver import Client as MCPServerClient
 import storageService as storage_service
 
 from version import get_full_version
@@ -144,16 +142,9 @@ def administration_as_dips(request):
                 "%repository%": str(new_asconfig.repository),
                 "%inherit_notes%": str(new_asconfig.inherit_notes),
             }
-
-            logger.debug('New ArchivesSpace settings: %s', (settings,))
-            new_mscrDic = models.MicroServiceChoiceReplacementDic.objects.get(description='ArchivesSpace Config')
-            logger.debug('Trying to save mscr %s', (new_mscrDic.description,))
+            logger.debug('Saving new ArchivesSpace settings: %s', settings)
             new_asconfig.save()
-            logger.debug('Old: %s', (new_mscrDic.replacementdic,))
-            new_mscrDic.replacementdic = str(settings)
-            logger.debug('New: %s', (new_mscrDic.replacementdic,))
-            new_mscrDic.save()
-            logger.debug('Done')
+            MCPServerClient().set_microservice_choice_replacement(settings, description='ArchivesSpace Config')
             messages.info(request, 'Saved.')
     else:
         form = ArchivesSpaceConfigForm(instance=as_config)

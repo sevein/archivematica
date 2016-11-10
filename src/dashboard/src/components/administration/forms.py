@@ -22,7 +22,6 @@ from collections import OrderedDict
 
 from django import forms
 from django.conf import settings
-from django.db import connection
 from django.utils.translation import ugettext as _
 from django.forms.widgets import TextInput, RadioSelect, CheckboxInput, Select
 
@@ -30,6 +29,7 @@ from components import helpers
 from main import models
 from components.administration.models import ArchivistsToolkitConfig, ArchivesSpaceConfig
 
+from mcpserver import Client as MCPServerClient
 import storageService as storage_service
 
 
@@ -335,11 +335,15 @@ class ProcessingConfigurationForm(forms.Form):
 
     def __init__(self, *args, **kwargs):
         super(ProcessingConfigurationForm, self).__init__(*args, **kwargs)
+
+        self.mcpserver_client = MCPServerClient()
+
         for choice_uuid, field in self.processing_fields.items():
             ftype = field['type']
             opts = self.DEFAULT_FIELD_OPTS.copy()
             if 'label' in field:
                 opts['label'] = field['label']
+
             if ftype == 'days':
                 if 'min_value' in field:
                     opts['min_value'] = field['min_value']
@@ -347,13 +351,16 @@ class ProcessingConfigurationForm(forms.Form):
                 if 'placeholder' in field:
                     self.fields[choice_uuid].widget.attrs['placeholder'] = field['placeholder']
                 self.fields[choice_uuid].widget.attrs['class'] = 'form-control'
+
             else:
                 choices = opts['choices'] = list(self.EMPTY_CHOICES)
+
                 if ftype == 'boolean':
                     if 'yes_option' in field:
                         choices.append((field['yes_option'], 'Yes'))
                     if 'no_option' in field:
                         choices.append((field['no_option'], 'No'))
+
                 elif ftype == 'chain_choice':
                     chain_choices = models.MicroServiceChainChoice.objects.filter(choiceavailableatlink_id=choice_uuid)
                     ignored_choices = field.get('ignored_choices', [])
@@ -362,15 +369,17 @@ class ProcessingConfigurationForm(forms.Form):
                         if chain.description in ignored_choices:
                             continue
                         choices.append((chain.pk, chain.description))
+
                 elif ftype == 'replace_dict':
-                    replace_dicts = models.MicroServiceChoiceReplacementDic.objects.filter(choiceavailableatlink_id=choice_uuid)
-                    for item in replace_dicts:
-                        choices.append((item.pk, item.description))
+                    replacements = MCPServerClient().list_microservice_choice_replacements(microservice_uuid=choice_uuid).replacements
+                    for item in replacements:
+                        choices.append((item.microserviceUUID, item.description))
+
                 elif ftype == 'storage_service':
                     for loc in get_storage_locations(purpose=field['purpose']):
                         choices.append((loc['resource_uri'], loc['description']))
-                self.fields[choice_uuid] = forms.ChoiceField(widget=Select(attrs={'class': 'form-control'}),
-                                                             **opts)
+
+                self.fields[choice_uuid] = forms.ChoiceField(widget=Select(attrs={'class': 'form-control'}), **opts)
 
     def load_config(self, name):
         """
@@ -408,7 +417,7 @@ class ProcessingConfigurationForm(forms.Form):
             if field is None:
                 continue
             if isinstance(field, forms.ChoiceField):
-                if not value: # Ignore empty string!
+                if not value:  # Ignore empty string!
                     continue
             if fprops['type'] == 'days':
                 if value == 0:
@@ -423,35 +432,29 @@ class ProcessingConfigurationForm(forms.Form):
                 except models.MicroServiceChainLink.DoesNotExist:
                     pass
                 else:
-                    for i, item in enumerate(get_duplicated_choices(fprops['label'], choice_name)):
-                        comment = '{} (match {} for "{}")'.format(fprops['label'], i+1, choice_name)
-                        config.add_choice(item[0], item[1], comment=comment)
+                    for i, item in enumerate(self._get_duplicated_choices(fprops['label'], choice_name)):
+                        comment = '{} (match {} for "{}")'.format(fprops['label'], i + 1, choice_name)
+                        config.add_choice(item.srcUUID, item.dstUUID, comment=comment)
             else:
                 config.add_choice(choice_uuid, value, comment=fprops['label'])
         config.save(config_path)
 
+    def _get_duplicated_choices(self, choice_chain_name, choice_link_name):
+        """
+        Given the name of a choice chain and one of its choices, return a list
+        of matching links as doubles (tuples): UUID of chain, UUID of choice.
 
-def get_duplicated_choices(choice_chain_name, choice_link_name):
-    """
-    Given the name of a choice chain and one of its choices, return a list
-    of matching links as doubles (tuples): UUID of chain, UUID of choice.
-    """
-    sql = """
-        SELECT
-            MicroServiceChainLinks.pk,
-            MicroServiceChains.pk
-        FROM TasksConfigs
-        LEFT JOIN MicroServiceChainLinks ON (MicroServiceChainLinks.currentTask = TasksConfigs.pk)
-        LEFT JOIN MicroServiceChainChoice ON (MicroServiceChainChoice.choiceAvailableAtLink = MicroServiceChainLinks.pk)
-        LEFT JOIN MicroServiceChains ON (MicroServiceChains.pk = MicroServiceChainChoice.chainAvailable)
-        WHERE
-            TasksConfigs.description = %s
-            AND MicroServiceChains.description = %s;
-    """
-    with connection.cursor() as cursor:
-        cursor.execute(sql, [choice_chain_name, choice_link_name])
-        return cursor.fetchall()
+        For example, you have the chain "Normalize" and its link "Normalize for
+        preservation" and you want to know what are the matching chain links:
 
+        ('cb8e5706-e73f-472f-ad9b-d1236af8095f', '612e3609-ce9a-4df6-a9a3-63d634d2d934')
+        ('7509e7dc-1e1b-4dce-8d21-e130515fce73', '612e3609-ce9a-4df6-a9a3-63d634d2d934')
+
+        This basically means that at two different points in the workflow the user
+        was asked to "Normalize". In both cases, the option "Normalize for
+        preservation" was offered.
+        """
+        return self.mcpserver_client.list_microservice_choice_duplicates(choice_chain_name, choice_link_name)
 
 def get_storage_locations(purpose):
     try:

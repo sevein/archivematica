@@ -1,7 +1,6 @@
 #!/usr/bin/env python2
 from __future__ import print_function
 import argparse
-import ast
 import csv
 import sys
 
@@ -11,6 +10,7 @@ from main import models
 
 # archivematicaCommon
 import archivematicaFunctions
+from mcpserver import Client as MCPServerClient
 
 # Third party dependencies, alphabetical by import source
 from agentarchives import archivesspace
@@ -19,13 +19,13 @@ from agentarchives import archivesspace
 import django
 django.setup()
 
+
 def create_archivesspace_client():
     """
     Create an ArchivesSpace client instance.
     """
     # TODO use same code as views_as.py?
-    repl_dict = models.MicroServiceChoiceReplacementDic.objects.get(description='ArchivesSpace Config')
-    config = ast.literal_eval(repl_dict.replacementdic)
+    config = MCPServerClient().get_microservice_choice_replacement_arguments(description='ArchivesSpace Config')
 
     try:
         client = archivesspace.ArchivesSpaceClient(
@@ -42,6 +42,7 @@ def create_archivesspace_client():
         print("Unable to connect to ArchivesSpace server at the default location! Check administrative settings.")
         return None
     return client
+
 
 def parse_archivesspaceids_csv(files):
     """
@@ -60,6 +61,7 @@ def parse_archivesspaceids_csv(files):
                 ref_id = row[1]
                 file_info[filename] = ref_id
     return file_info
+
 
 def parse_archivesspace_ids(sip_path, sip_uuid):
     """
@@ -125,6 +127,7 @@ def parse_archivesspace_ids(sip_path, sip_uuid):
 
     # Check if any files were processed?
     return 0
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Parse metadata for DIP helpers')

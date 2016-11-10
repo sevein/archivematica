@@ -54,7 +54,7 @@ from django.db.models import Q
 
 # This project, alphabetical by import source
 import watchDirectory
-import RPCServer
+import gRPCServer
 from utils import log_exceptions
 
 from jobChain import jobChain
@@ -308,6 +308,11 @@ LOGGING_CONFIG = {
             'backupCount': 5,
             'maxBytes': 4 * 1024 * 1024,  # 4 MiB
         },
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'detailed',
+        },
     },
     'loggers': {
         'archivematica': {
@@ -315,7 +320,7 @@ LOGGING_CONFIG = {
         },
     },
     'root': {
-        'handlers': ['logfile', 'verboselogfile'],
+        'handlers': ['logfile', 'verboselogfile', 'console'],
         'level': 'WARNING',
     },
 }
@@ -343,5 +348,5 @@ if __name__ == '__main__':
     cleanupOldDbEntriesOnNewRun()
     watchDirectories()
 
-    # This is blocking the main thread with the worker loop
-    RPCServer.startRPCServer()
+    # This is going to block the main thread
+    gRPCServer.start()

@@ -16,6 +16,7 @@
 # along with Archivematica.  If not, see <http://www.gnu.org/licenses/>.
 
 import ConfigParser
+import calendar
 import logging
 import mimetypes
 import os
@@ -32,7 +33,10 @@ from django.db.models import Max
 from django.http import HttpResponse, HttpResponseRedirect, StreamingHttpResponse
 from django.core.servers.basehttp import FileWrapper
 from django.shortcuts import render
+
+from contrib import utils
 from main import models
+from mcpserver import Client as MCPServerClient
 
 logger = logging.getLogger('archivematica.dashboard')
 
@@ -60,16 +64,16 @@ def keynat(string):
     >>> sorted(items)
     ['10th', '1st', '9', 'Z', 'a']
     >>> sorted(items, key=keynat)
-    ['1st', '9', '10th', 'a', 'Z']    
+    ['1st', '9', '10th', 'a', 'Z']
     '''
     it = type(1)
     r = []
     for c in string:
         if c.isdigit():
             d = int(c)
-            if r and type( r[-1] ) == it: 
+            if r and type( r[-1] ) == it:
                 r[-1] = r[-1] * 10 + d
-            else: 
+            else:
                 r.append(d)
         else:
             r.append(c.lower())
@@ -346,3 +350,49 @@ def stream_file_from_storage_service(url, error_message='Remote URL returned {}'
             'message': error_message.format(stream.status_code)
         }
         return json_response(response, status_code=400)
+
+
+def units_status(objects, unit_type):
+    jobs_awaiting = MCPServerClient().list_jobs_awaiting_approval().jobs
+    data = {'mcp': True, 'objects': list()}
+    model = {'ingest': models.SIP, 'transfer': models.Transfer}
+    unit_model = model[unit_type]
+    for item in objects:
+        if unit_model.objects.is_hidden(item['sipuuid']):
+            continue
+
+        jobs = get_jobs_by_sipuuid(item['sipuuid'])
+
+        # Add new unit to list
+        unit = {
+            'directory': utils.get_directory_name_from_job(jobs),
+            'timestamp': calendar.timegm(item['timestamp'].timetuple()),
+            'uuid': item['sipuuid'],
+            'id': item['sipuuid'],
+            'jobs': list(),
+        }
+        data['objects'].append(unit)
+
+        # Include in the unit the list of jobs
+        for job in jobs:
+            new_job = {
+                'uuid': job.jobuuid,
+                'type': job.jobtype,
+                'microservicegroup': job.microservicegroup,
+                'subjobof': = job.subjobof,
+                'currentstep': = job.currentstep,
+                'timestamp': '%d.%s' % (calendar.timegm(job.createdtime.timetuple()), str(job.createdtimedec).split('.')[-1]),
+            }
+            unit['jobs'].append(new_job)
+
+            # We should find a better way to do this!
+            for job_awaiting in jobs_awaiting:
+                if job_awaiting.UUID != job.jobuuid:
+                    continue
+                choices = dict()
+                for ch in job_awaiting.choices:
+                    choices[ch.value] = ch.description
+                if choices:
+                    new_job['choices'] = choices
+
+    return data

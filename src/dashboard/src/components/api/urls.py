@@ -25,7 +25,7 @@ urlpatterns = [
     url(r'transfer/unapproved', views.unapproved_transfers),
     url(r'transfer/completed', views.completed_transfers),
     url(r'transfer/status/(?P<unit_uuid>' + settings.UUID_REGEX + ')', views.status, {'unit_type': 'unitTransfer'}),
-    url(r'transfer/start_transfer/', views.start_transfer_api),
+    url(r'transfer/start_transfer/', views.start_transfer),
     url(r'transfer/reingest', views.reingest, {'target': 'transfer'}),
 
     url(r'ingest/status/(?P<unit_uuid>' + settings.UUID_REGEX + ')', views.status, {'unit_type': 'unitSIP'}),
@@ -33,7 +33,7 @@ urlpatterns = [
     url(r'^(?P<unit_type>transfer|ingest)/(?P<unit_uuid>' + settings.UUID_REGEX + ')/delete/', views.mark_hidden),
 
     url(r'^ingest/reingest', views.reingest, {'target': 'ingest'}),
-    url(r'^ingest/copy_metadata_files/$', views.copy_metadata_files_api),
+    url(r'^ingest/copy_metadata_files/$', views.copy_metadata_files),
 
     url(r'administration/dips/atom/levels/$', views.get_levels_of_description),
     url(r'administration/dips/atom/fetch_levels/$', views.fetch_levels_of_description_from_atom),

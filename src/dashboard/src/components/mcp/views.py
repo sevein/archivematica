@@ -15,26 +15,21 @@
 # You should have received a copy of the GNU General Public License
 # along with Archivematica.  If not, see <http://www.gnu.org/licenses/>.
 
-from django.http import HttpResponse
-from contrib.mcp.client import MCPClient
-from lxml import etree
+from django.http import HttpResponse, HttpResponseNotFound
 
-def execute(request):
-    result = ''
-    if 'uuid' in request.REQUEST:
-        client = MCPClient()
-        uuid   = request.REQUEST.get('uuid', '')
-        choice = request.REQUEST.get('choice', '')
-        uid    = request.REQUEST.get('uid', '')
-        result = client.execute(uuid, choice, uid)
-    return HttpResponse(result, content_type='text/plain')
+from mcpserver import Client as MCPServerClient
 
-def list(request):
-    client = MCPClient()
-    jobs = etree.XML(client.list())
-    response = ''
-    if 0 < len(jobs):
-        for job in jobs:
-            response += etree.tostring(job)
-    response = '<MCP>%s</MCP>' % response
-    return HttpResponse(response, content_type='text/xml')
+
+def approve_job(request):
+    try:
+        job_uuid = request.REQUEST['uuid']
+        choice_id = request.REQUEST['choice']
+        uid = request.REQUEST['uid'] # This should not be here? TODO
+    except KeyError:
+        return HttpResponseNotFound()
+    else:
+        approved = MCPServerClient().approve_job(job_uuid, choice_id)
+        if approved:
+            return HttpResponse(status=202)
+        return HttpResponse(status=503)
+

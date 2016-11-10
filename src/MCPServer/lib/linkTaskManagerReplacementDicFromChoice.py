@@ -31,9 +31,7 @@ import time
 
 from linkTaskManager import LinkTaskManager
 import archivematicaMCP
-from linkTaskManagerChoice import choicesAvailableForUnits
-from linkTaskManagerChoice import choicesAvailableForUnitsLock
-from linkTaskManagerChoice import waitingOnTimer
+from linkTaskManagerChoice import choicesAvailableForUnits, choicesAvailableForUnitsLock, waitingOnTimer
 
 sys.path.append("/usr/lib/archivematica/archivematicaCommon")
 from dicts import ReplacementDict

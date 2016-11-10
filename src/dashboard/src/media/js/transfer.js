@@ -134,9 +134,6 @@ $(function()
       className: 'job',
 
       events: {
-        'click .btn_browse_job': 'browseJob',
-        'click .btn_approve_job': 'approveJob',
-        'click .btn_reject_job': 'rejectJob',
         'click .btn_show_tasks': 'showTasks',
         'change select': 'action'
       },
@@ -148,25 +145,11 @@ $(function()
           $(this.el).html(this.template(this.model.toJSON()));
 
           $(this.el).css(
-            'background-color', 
+            'background-color',
             this.getStatusColor(this.model.get('currentstep'))
           );
 
-          // Micro-services requiring approval
-          if (1 === this.model.get('status'))
-          {
-            this.$('.job-detail-actions')
-              .append('<a class="btn_browse_job" href="#" title="Browse"><span>Browse</span></a>')
-              .append('<a class="btn_approve_job" href="#" title="Approve"><span>Approve</span></a>')
-              .append('<a class="btn_reject_job" href="#" title="Reject"><span>Reject</span></a>');
-          }
-          else
-          {
-            // ...
-          }
-
-          choices = this.model.get('choices');
-
+          var choices = this.model.get('choices');
           if (choices)
           {
             var $select = $('<select />').append('<option>Actions</option>')
@@ -215,7 +198,7 @@ $(function()
                 // get rid of select, etc.
                 self.$('.job-detail-actions').empty();
               },
-            url: '/mcp/execute/'
+            url: '/mcp/approve-job/'
           });
         }
 

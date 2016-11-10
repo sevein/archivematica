@@ -16,18 +16,21 @@
 # along with Archivematica.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import absolute_import
+
 from django.core.urlresolvers import reverse
 from django.http import HttpResponseRedirect, HttpResponseServerError
-import sys, MySQLdb, ast
+import MySQLdb
+
 from main import models
 from components import advanced_search
 from . import pair_matcher
 
 from agentarchives.archivists_toolkit import ArchivistsToolkitClient
+from mcpserver import Client as MCPServerClient
+
 
 def get_atk_system_client():
-    dict = models.MicroServiceChoiceReplacementDic.objects.get(description='Archivists Toolkit Config')
-    config = ast.literal_eval(dict.replacementdic)
+    config = MCPServerClient().get_microservice_choice_replacement_arguments(description='Archivists Toolkit Config')
 
     return ArchivistsToolkitClient(
         host=config['%host%'],
