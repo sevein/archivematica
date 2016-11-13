@@ -17,17 +17,20 @@
 
 from django.conf.urls import url
 from django.conf import settings
+
 from components.administration import views
 from components.administration import views_processing
+from components.administration import views_dip_upload
+
 
 urlpatterns = [
     url(r'^$', views.administration),
     url(r'reports/failures/delete/(?P<report_id>\w+)/$', views.failure_report_delete),
     url(r'reports/failures/(?P<report_id>\w+)/$', views.failure_report),
     url(r'reports/failures/$', views.failure_report),
-    url(r'dips/as/$', views.administration_as_dips),
-    url(r'dips/atk/$', views.administration_atk_dips),
-    url(r'dips/atom/$', views.atom_dips),
+    url(r'dips/as/$', views_dip_upload.admin_as),
+    url(r'dips/atk/$', views_dip_upload.admin_atk),
+    url(r'dips/atom/$', views_dip_upload.admin_atom),
     url(r'dips/atom/edit_levels/$', views.atom_levels_of_description),
     url(r'sources/$', views.sources),
     url(r'storage/$', views.storage),

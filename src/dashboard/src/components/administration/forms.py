@@ -24,11 +24,10 @@ from django import forms
 from django.conf import settings
 from django.db import connection
 from django.utils.translation import ugettext as _
-from django.forms.widgets import TextInput, RadioSelect, CheckboxInput, Select
+from django.forms.widgets import TextInput, CheckboxInput, Select
 
 from components import helpers
 from main import models
-from components.administration.models import ArchivistsToolkitConfig, ArchivesSpaceConfig
 
 import storageService as storage_service
 
@@ -95,6 +94,7 @@ class StorageSettingsForm(SettingsForm):
         help_text='API key of the storage service user. E.g. 45f7684483044809b2de045ba59dc876b11b9810'
     )
 
+
 class ChecksumSettingsForm(SettingsForm):
     CHOICES = (
         ('md5', 'MD5'),
@@ -103,76 +103,6 @@ class ChecksumSettingsForm(SettingsForm):
         ('sha512', 'SHA-512')
     )
     checksum_type = forms.ChoiceField(choices=CHOICES, label='Select algorithm')
-
-
-class ArchivistsToolkitConfigForm(forms.ModelForm):
-    class Meta:
-        model = ArchivistsToolkitConfig
-        fields = ('host', 'port', 'dbname', 'dbuser', 'dbpass', 'atuser', 'premis', 'ead_actuate', 'ead_show', 'object_type', 'use_statement', 'uri_prefix', 'access_conditions', 'use_conditions')
-        widgets = {
-            'host': TextInput(attrs=settings.INPUT_ATTRS),
-            'port': TextInput(attrs=settings.INPUT_ATTRS),
-            'dbname': TextInput(attrs=settings.INPUT_ATTRS),
-            'dbuser': TextInput(attrs=settings.INPUT_ATTRS),
-            'dbpass': forms.PasswordInput(),
-            'atuser': TextInput(attrs=settings.INPUT_ATTRS),
-            'premis': RadioSelect(),
-            'ead_actuate': RadioSelect(),
-            'ead_show': RadioSelect(),
-            'object_type': TextInput(attrs=settings.INPUT_ATTRS),
-            'use_statement': TextInput(attrs=settings.INPUT_ATTRS),
-            'uri_prefix': TextInput(attrs=settings.INPUT_ATTRS),
-            'access_conditions': TextInput(attrs=settings.INPUT_ATTRS),
-            'use_conditions': TextInput(attrs=settings.INPUT_ATTRS),
-        }
-
-
-class ArchivesSpaceConfigForm(forms.ModelForm):
-    class Meta:
-        model = ArchivesSpaceConfig
-        fields = ('host', 'port', 'user', 'passwd', 'premis', 'xlink_actuate', 'xlink_show', 'use_statement', 'object_type', 'access_conditions', 'use_conditions', 'uri_prefix', 'repository', 'inherit_notes')
-        widgets = {
-            'host': TextInput(attrs=settings.INPUT_ATTRS),
-            'port': TextInput(attrs=settings.INPUT_ATTRS),
-            'user': TextInput(attrs=settings.INPUT_ATTRS),
-            'passwd': forms.PasswordInput(),
-            'premis': RadioSelect(),
-            'xlink_actuate': RadioSelect(),
-            'xlink_show': RadioSelect(),
-            'use_statement': TextInput(attrs=settings.INPUT_ATTRS),
-            'object_type': TextInput(attrs=settings.INPUT_ATTRS),
-            'access_conditions': TextInput(attrs=settings.INPUT_ATTRS),
-            'use_conditions': TextInput(attrs=settings.INPUT_ATTRS),
-            'uri_prefix': TextInput(attrs=settings.INPUT_ATTRS),
-            'repository': TextInput(attrs=settings.INPUT_ATTRS),
-        }
-
-
-class AtomDipUploadSettingsForm(SettingsForm):
-    dip_upload_atom_url = forms.CharField(required=True,
-        label="Upload URL",
-        help_text="URL where the Qubit index.php frontend lives, SWORD services path will be appended.")
-    dip_upload_atom_email = forms.CharField(required=True,
-        label="Login email",
-        help_text="E-mail account used to log into Qubit.")
-    dip_upload_atom_password = forms.CharField(required=True,
-        label="Login password",
-        help_text="E-mail account used to log into Qubit.")
-    dip_upload_atom_version = forms.ChoiceField(label="AtoM version",
-        choices=((1, 'Atom 1.x'), (2, 'Atom 2.x')))
-    dip_upload_atom_rsync_target = forms.CharField(required=False,
-        label="Rsync target",
-        help_text="The DIP can be sent with Rsync to a remote host before is deposited in Qubit. This is the destination value passed to Rsync (see man 1 rsync). For example: foobar.com:~/dips/.")
-    dip_upload_atom_rsync_command = forms.CharField(required=False,
-        label="Rsync command",
-        help_text="If --rsync-target is used, you can use this argument to specify the remote shell manually. For example: ssh -p 22222 -l user.")
-    dip_upload_atom_debug = forms.ChoiceField(required=False,
-        label="Debug mode",
-        help_text="Show additional details.",
-        choices=((False, 'No'), (True, 'Yes')))
-    dip_upload_atom_key = forms.CharField(required=False,
-        label="REST API key",
-        help_text="Used in metadata-only DIP upload.")
 
 
 class TaxonomyTermForm(forms.ModelForm):
@@ -277,7 +207,7 @@ class ProcessingConfigurationForm(forms.Form):
     }
     processing_fields['eeb23509-57e2-4529-8857-9d62525db048'] = {
         'type': 'chain_choice',
-        'name':  'reminder',
+        'name': 'reminder',
         'label': 'Reminder: add metadata if desired',
     }
     processing_fields['7079be6d-3a25-41e6-a481-cee5f352fe6e'] = {
@@ -409,7 +339,7 @@ class ProcessingConfigurationForm(forms.Form):
             if field is None:
                 continue
             if isinstance(field, forms.ChoiceField):
-                if not value: # Ignore empty string!
+                if not value:  # Ignore empty string!
                     continue
             if fprops['type'] == 'days':
                 if value == 0:
@@ -425,7 +355,7 @@ class ProcessingConfigurationForm(forms.Form):
                     pass
                 else:
                     for i, item in enumerate(get_duplicated_choices(fprops['label'], choice_name)):
-                        comment = '{} (match {} for "{}")'.format(fprops['label'], i+1, choice_name)
+                        comment = '{} (match {} for "{}")'.format(fprops['label'], i + 1, choice_name)
                         config.add_choice(item[0], item[1], comment=comment)
             else:
                 config.add_choice(choice_uuid, value, comment=fprops['label'])

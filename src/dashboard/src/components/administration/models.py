@@ -1,7 +1,44 @@
-from django.db import models
+from django.db import models, transaction
+
 from main.models import UUIDPkField
 
+
+class ReplacementDictManager(models.Manager):
+    def get_arguments(self, dictname):
+        """
+        Obtain a dict with all the items found in the table for a given
+        dictname. The returned dict will be empty if the dictname could not
+        be found.
+
+            > ReplacementDict.objects.get_arguments('foobar')
+
+            {u'foo': u'bar'}
+
+        """
+        return {key: value for (key, value) in self.get_queryset().filter(dictname=dictname, hidden=False).order_by('position').values_list('parameter', 'displayvalue')}
+
+    def set_arguments(self, dictname, arguments):
+        """
+        Given a dictname, it persits the dictionary mapped into the table where
+        each item takes its own row. It does not reuse existing values.
+
+            > ReplacementDict.objects.set_arguments('My dictionary', {'foo': 'bar'})
+
+        """
+        if not isinstance(arguments, dict):
+            return False
+        with transaction.atomic():
+            self.get_queryset().filter(dictname=dictname).delete()
+            self.bulk_create([ReplacementDict(dictname=dictname, position=pos, parameter=parameter, displayvalue=value, hidden=False) for pos, (parameter, value) in enumerate(arguments.iteritems(), 1)])
+
+
 class ReplacementDict(models.Model):
+    """
+    This is an extension to MicroServiceChoiceReplacementDic for local
+    configuration purposes, as MicroServiceChoiceReplacementDic belongs to MCP
+    and it is not mutable. MCP will look up the data in here when necessary.
+    See task manager linkTaskManagerReplacementDicFromChoice for more details.
+    """
     id = UUIDPkField()
     dictname = models.CharField(max_length=50)
     position = models.IntegerField(default=1)
@@ -13,42 +50,7 @@ class ReplacementDict(models.Model):
     class Meta:
         db_table = u'ReplacementDict'
 
+    objects = ReplacementDictManager()
 
-PREMIS_CHOICES = [('yes', 'Yes'), ('no', 'No'), ('premis', 'Base on PREMIS')]
-EAD_ACTUATE_CHOICES = [('none', 'None'), ('onLoad', 'onLoad'), ('other', 'other'), ('onRequest', 'onRequest')]
-EAD_SHOW_CHOICES = [('embed', 'Embed'), ('new', 'New'), ('none', 'None'), ('other', 'Other'), ('replace', 'Replace')]
-
-class ArchivistsToolkitConfig(models.Model):
-    id = UUIDPkField()
-    host = models.CharField(max_length=50, verbose_name='Database Host')
-    port = models.IntegerField(default=3306, verbose_name='Database Port')
-    dbname = models.CharField(max_length=50, verbose_name='Database Name')
-    dbuser = models.CharField(max_length=50, verbose_name='Database User')
-    dbpass = models.CharField(max_length=50, blank=True, verbose_name='Database Password')
-    atuser = models.CharField(max_length=50, verbose_name='Archivists Toolkit Username')
-    premis = models.CharField(max_length=10, choices=PREMIS_CHOICES, verbose_name='Restrictions Apply', default='yes')
-    ead_actuate = models.CharField(max_length=50, choices=EAD_ACTUATE_CHOICES, verbose_name='EAD DAO Actuate', default='none')
-    ead_show = models.CharField(max_length=50, choices=EAD_SHOW_CHOICES, verbose_name='EAD DAO Show', default='embed')
-    object_type = models.CharField(max_length=50, blank=True, verbose_name='Object type')
-    use_statement = models.CharField(max_length=50, verbose_name='Use Statement')
-    uri_prefix = models.CharField(max_length=50, verbose_name='URL prefix')
-    access_conditions = models.CharField(max_length=50, blank=True, verbose_name='Conditions governing access')
-    use_conditions = models.CharField(max_length=50, blank=True, verbose_name='Conditions governing use')
-
-
-class ArchivesSpaceConfig(models.Model):
-    id = UUIDPkField()
-    host = models.CharField(max_length=50, verbose_name='ArchivesSpace host', help_text='Do not include http:// or www. Example: aspace.test.org ')
-    port = models.IntegerField(default=8089, verbose_name='ArchivesSpace backend port', help_text='Example: 8089')
-    user = models.CharField(max_length=50, verbose_name='ArchivesSpace administrative user', help_text='Example: admin')
-    passwd = models.CharField(max_length=50, blank=True, verbose_name='ArchivesSpace administrative user password', help_text='Password for user set above. Re-enter this password every time changes are made.')
-    premis = models.CharField(max_length=10, choices=PREMIS_CHOICES, verbose_name='Restrictions Apply', default='yes')
-    xlink_show = models.CharField(max_length=50, choices=EAD_SHOW_CHOICES, verbose_name='XLink Show', default='embed')
-    xlink_actuate = models.CharField(max_length=50, choices=EAD_ACTUATE_CHOICES, verbose_name='XLink Actuate', default='none')
-    object_type = models.CharField(max_length=50, blank=True, verbose_name='Object type', help_text='Optional, must come from ArchivesSpace controlled list. Example: sound_recording')
-    use_statement = models.CharField(max_length=50, verbose_name='Use statement', help_text='Optional, but if present should come from ArchivesSpace controlled list. Example: image-master', blank=True)
-    uri_prefix = models.CharField(max_length=50, verbose_name='URL prefix', help_text='URL of DIP object server as you wish to appear in ArchivesSpace record. Example: http://example.com')
-    access_conditions = models.CharField(max_length=50, blank=True, verbose_name='Conditions governing access', help_text='Populates Conditions governing access note')
-    use_conditions = models.CharField(max_length=50, blank=True, verbose_name='Conditions governing use', help_text='Populates Conditions governing use note')
-    repository = models.IntegerField(default=2, verbose_name='ArchivesSpace repository number', help_text='Default for single repository installation is 2')
-    inherit_notes = models.BooleanField(default=False, verbose_name='Inherit digital object notes from the parent component')
+    def __str__(self):
+        return '[dict={}|pos={}] {}: {}'.format(self.dictname, self.position, self.parameter, self.displayvalue)
